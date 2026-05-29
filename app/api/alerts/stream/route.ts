@@ -47,7 +47,10 @@ export async function GET(request) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
-      'X-Accel-Buffering': 'no' // bypass Nginx buffering
+      'X-Accel-Buffering': 'no', // bypass Nginx buffering
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Cache-Control, Connection'
     }
   });
 }
