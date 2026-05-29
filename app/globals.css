@@ -1,0 +1,438 @@
+/* ========== CSS Reset & Global Design System ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Outfit', 'Noto Sans Thai', 'Kanit', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root {
+  --bg-dark: #07090e;
+  --bg-main: #0c0f1c;
+  --glass-bg: rgba(18, 22, 38, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-glow: rgba(99, 102, 241, 0.15);
+  
+  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+  --btn-gradient-hover: linear-gradient(135deg, #4f46e5 0%, #9333ea 50%, #db2777 100%);
+  
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --text-label: #818cf8;
+  
+  --success: #10b981;
+  --warning: #f59e0b;
+  --border-radius-lg: 24px;
+  --border-radius-md: 16px;
+  
+  --shadow-premium: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 30px rgba(168, 85, 247, 0.25);
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ========== Animated Background Orbs ========== */
+.bg-orbs {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.15;
+  mix-blend-mode: screen;
+  animation: floatOrb 25s infinite alternate ease-in-out;
+}
+
+.orb-1 {
+  width: 400px;
+  height: 400px;
+  background: #6366f1;
+  top: -10%;
+  left: -10%;
+  animation-duration: 20s;
+}
+
+.orb-2 {
+  width: 500px;
+  height: 500px;
+  background: #ec4899;
+  bottom: -15%;
+  right: -10%;
+  animation-duration: 30s;
+  animation-delay: -5s;
+}
+
+.orb-3 {
+  width: 350px;
+  height: 350px;
+  background: #a855f7;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-duration: 25s;
+  animation-delay: -10s;
+}
+
+@keyframes floatOrb {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(50px, -40px) scale(1.1); }
+  100% { transform: translate(-30px, 30px) scale(0.9); }
+}
+
+/* ========== Core Container ========== */
+.container {
+  width: 100%;
+  max-width: 440px;
+  z-index: 2;
+}
+
+/* ========== Glassmorphic Card Panel ========== */
+.card.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-lg);
+  padding: 35px 30px;
+  box-shadow: var(--shadow-premium), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Inner glow accent */
+.card.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100px;
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.08) 0%, rgba(168, 85, 247, 0) 100%);
+  pointer-events: none;
+}
+
+/* ========== Header Section ========== */
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.glowing-heart, .glowing-qr {
+  font-size: 48px;
+  display: inline-block;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.6));
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.5)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 20px rgba(236, 72, 153, 0.8)); }
+}
+
+.header h1, .header h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, #ffffff, #d8b4fe);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+/* ========== Preset Amount Grid Buttons ========== */
+.amount-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 25px;
+}
+
+.amount-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--border-radius-md);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  position: relative;
+  overflow: hidden;
+}
+
+.amount-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--primary-gradient);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+
+.amount-btn * {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.amount-emoji {
+  font-size: 24px;
+  margin-bottom: 2px;
+  transition: transform 0.25s ease;
+}
+
+.amount-val {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.amount-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Hover States */
+.amount-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(168, 85, 247, 0.3);
+  transform: translateY(-2px);
+}
+
+.amount-btn:hover .amount-emoji {
+  transform: scale(1.2) rotate(5deg);
+}
+
+/* Selected Preset State */
+.amount-btn.selected {
+  border-color: transparent;
+  box-shadow: 0 8px 25px rgba(168, 85, 247, 0.35);
+  transform: translateY(-3px) scale(1.02);
+}
+
+.amount-btn.selected::before {
+  opacity: 1;
+}
+
+.amount-btn.selected .amount-val {
+  color: #ffffff;
+}
+
+.amount-btn.selected .amount-desc {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ========== Custom Amount Area ========== */
+.custom-amount {
+  margin-bottom: 25px;
+}
+
+.custom-amount label, .donor-info label {
+  display: block;
+  color: var(--text-label);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+  transition: var(--transition-smooth);
+}
+
+.input-group:focus-within {
+  border-color: #a855f7;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.currency {
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #a855f7;
+  font-size: 20px;
+  font-weight: 700;
+  border-right: 1px solid var(--glass-border);
+}
+
+.input-group input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 14px 18px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #ffffff;
+  outline: none;
+}
+
+.input-group input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+  font-weight: 400;
+}
+
+/* ========== Donor Info Elements ========== */
+.donor-info {
+  margin-bottom: 30px;
+}
+
+.donor-info label {
+  margin-top: 15px;
+}
+
+.donor-info label:first-of-type {
+  margin-top: 0;
+}
+
+.donor-info input,
+.donor-info textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border);
+  color: #ffffff;
+  border-radius: var(--border-radius-md);
+  padding: 14px 16px;
+  font-size: 13.5px;
+  outline: none;
+  transition: var(--transition-smooth);
+  resize: none;
+}
+
+.donor-info input::placeholder,
+.donor-info textarea::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.donor-info input:focus,
+.donor-info textarea:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* ========== Custom Action Buttons ========== */
+.btn-primary {
+  width: 100%;
+  padding: 18px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--primary-gradient);
+  background-size: 200% auto;
+  border: none;
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  box-shadow: 0 10px 20px -10px rgba(168, 85, 247, 0.5);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-position: right center;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(168, 85, 247, 0.45);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-primary:disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.25);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  width: 100%;
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+  margin-top: 15px;
+  transition: var(--transition-smooth);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ========== Thank You Page Specific Styles ========== */
+.thank-you {
+  text-align: center;
+}
+
+.thank-you .icon.glowing-heart {
+  font-size: 72px;
+  margin-bottom: 20px;
+}
+
+.thank-you h1 {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+.thank-you p.subtitle {
+  font-size: 14px;
+  margin-bottom: 30px;
+}
+
+/* Chrome numeric field cleanup */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
