@@ -1,29 +1,37 @@
 import axios from 'axios';
 
-const BEAM_ENV = process.env.BEAM_ENV || 'sandbox';
-const BASE_URL = BEAM_ENV === 'production'
-  ? 'https://api.beamcheckout.com'
-  : 'https://playground.api.beamcheckout.com';
-
-const MERCHANT_ID = process.env.BEAM_MERCHANT_ID;
-const API_KEY = process.env.BEAM_API_KEY;
-
-// สร้าง Basic Auth header (MerchantID : APIKey)
 const getAuthHeader = () => {
-  if (!MERCHANT_ID || !API_KEY) {
+  const merchantId = process.env.BEAM_MERCHANT_ID;
+  const apiKey = process.env.BEAM_API_KEY;
+  if (!merchantId || !apiKey) {
     console.error('❌ Missing Beam Credentials: Check .env file');
   }
-  const credentials = Buffer.from(`${MERCHANT_ID}:${API_KEY}`).toString('base64');
+  const credentials = Buffer.from(`${merchantId}:${apiKey}`).toString('base64');
   return `Basic ${credentials}`;
 };
 
 // สร้าง Axios instance
 const beamApi = axios.create({
-  baseURL: BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
-    'Authorization': getAuthHeader()
+    'Content-Type': 'application/json'
   }
+});
+
+// ใช้ Request Interceptor เพื่อให้ได้ค่าจาก .env ล่าสุดเสมอ ป้องกันปัญหา Cache หรือการโหลดล่าช้าตอน Hot-Reload
+beamApi.interceptors.request.use((config) => {
+  const env = process.env.BEAM_ENV || 'sandbox';
+  config.baseURL = env === 'production'
+    ? 'https://api.beamcheckout.com'
+    : 'https://playground.api.beamcheckout.com';
+    
+  config.headers['Authorization'] = getAuthHeader();
+  
+  const merchantId = process.env.BEAM_MERCHANT_ID || 'undefined';
+  const apiKey = process.env.BEAM_API_KEY || 'undefined';
+  const maskedKey = apiKey !== 'undefined' ? apiKey.substring(0, 5) + '...' : 'undefined';
+  console.log(`📡 [Beam Request] Env: ${env} | Merchant: ${merchantId} | Key: ${maskedKey} | URL: ${config.baseURL}${config.url}`);
+  
+  return config;
 });
 
 /**
