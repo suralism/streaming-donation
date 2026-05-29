@@ -211,10 +211,12 @@ function useInMemoryFallback(reason: string) {
 export async function getTransactions() {
   await ensureConnected();
   if (isFallback) {
-    return [...memoryTransactions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return [...memoryTransactions]
+      .filter(t => !t.id.startsWith('test-alert-'))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
   if (!db) return [];
-  const result = await db.execute('SELECT * FROM transactions ORDER BY createdAt DESC');
+  const result = await db.execute("SELECT * FROM transactions WHERE id NOT LIKE 'test-alert-%' ORDER BY createdAt DESC");
   return result.rows.map((row: any) => ({
     ...row,
     raw_response: row.raw_response ? JSON.parse(row.raw_response) : null,

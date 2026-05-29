@@ -1,4 +1,6 @@
 import sseRegistry from '@/src/sseRegistry';
+import db from '@/src/database';
+import defaultSettings from '@/src/defaultSettings';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,9 +13,27 @@ export async function GET(request) {
   const initialPayload = { type: 'connected', message: 'Overlay connected' };
   writer.write(encoder.encode(`data: ${JSON.stringify(initialPayload)}\n\n`));
 
-  // Subscriber function
+  // Keep track of sent transaction IDs to prevent duplicates
+  const sentTxIds = new Set();
+  let lastCheckedTime = new Date(Date.now() - 5000).toISOString();
+  
+  // Track settings changes dynamically
+  let lastSettingsStr = '';
+  try {
+    const initSettings = await db.getSettings(defaultSettings);
+    lastSettingsStr = JSON.stringify(initSettings);
+  } catch (e) {}
+
+  // 1. In-memory Subscriber function (as a backup/real-time booster)
   const alertHandler = (data) => {
     try {
+      if (data.type === 'donation') {
+        const txId = data.id || data.referenceId;
+        if (txId) {
+          if (sentTxIds.has(txId)) return; // skip duplicate
+          sentTxIds.add(txId);
+        }
+      }
       writer.write(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
     } catch (err) {
       console.error('SSE send error:', err);
@@ -23,17 +43,70 @@ export async function GET(request) {
   sseRegistry.on('alert', alertHandler);
   console.log(`🔗 SSE Client connected. Current active listeners: ${sseRegistry.listenerCount('alert')}`);
 
-  // Heartbeat to keep connection alive
-  const heartbeatInterval = setInterval(() => {
+  // 2. Database-backed polling to bridge separate Node.js processes/isolated threads in Next.js
+  const dbPollInterval = setInterval(async () => {
+    try {
+      // Poll successful transactions
+      const transactions = await db.getTransactions();
+      const newSuccessfulTx = transactions.filter(
+        (tx) => tx.status === 'successful' && tx.paidAt && tx.paidAt > lastCheckedTime
+      );
+
+      // Sort chronological order
+      newSuccessfulTx.sort((a, b) => new Date(a.paidAt).getTime() - new Date(b.paidAt).getTime());
+
+      for (const tx of newSuccessfulTx) {
+        if (!sentTxIds.has(tx.id)) {
+          sentTxIds.add(tx.id);
+          
+          const alertPayload = {
+            type: 'donation',
+            id: tx.id,
+            donor: tx.donor || 'Anonymous',
+            amount: Number(tx.amount) || 0,
+            message: tx.message || '',
+            timestamp: tx.paidAt
+          };
+
+          writer.write(encoder.encode(`data: ${JSON.stringify(alertPayload)}\n\n`));
+          console.log(`📡 [SSE Poll] Pushed missing database alert for: ${alertPayload.donor}, Amount: ${alertPayload.amount}`);
+        }
+
+        if (tx.paidAt && tx.paidAt > lastCheckedTime) {
+          lastCheckedTime = tx.paidAt;
+        }
+      }
+    } catch (err) {
+      // Database might be busy or re-initializing
+    }
+  }, 2000);
+
+  // Poll settings changes every 4 seconds
+  let settingsPollCount = 0;
+  const heartbeatInterval = setInterval(async () => {
     try {
       writer.write(encoder.encode(`: keep-alive\n\n`));
-    } catch (err) {
-      // Stream might be closed already
+    } catch (err) {}
+
+    // Check settings changes
+    settingsPollCount++;
+    if (settingsPollCount >= 2) {
+      settingsPollCount = 0;
+      try {
+        const currentSettings = await db.getSettings(defaultSettings);
+        const currentSettingsStr = JSON.stringify(currentSettings);
+        if (currentSettingsStr !== lastSettingsStr) {
+          lastSettingsStr = currentSettingsStr;
+          writer.write(encoder.encode(`data: ${JSON.stringify({ type: 'settings_update', settings: currentSettings })}\n\n`));
+          console.log(`📡 [SSE Poll] Sent live settings update to OBS`);
+        }
+      } catch (e) {}
     }
   }, 15000);
 
   // Cleanup on request abort/close
   request.signal.addEventListener('abort', () => {
+    clearInterval(dbPollInterval);
     clearInterval(heartbeatInterval);
     sseRegistry.off('alert', alertHandler);
     try {

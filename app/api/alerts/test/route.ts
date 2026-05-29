@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import sseRegistry from '@/src/sseRegistry';
+import db from '@/src/database';
 
 export async function POST(request) {
   try {
@@ -16,6 +17,17 @@ export async function POST(request) {
 
     console.log(`📢 Emitting test alert for: ${alertData.donor}, Amount: ${alertData.amount}`);
     sseRegistry.emit('alert', alertData);
+
+    // บันทึกลง Database เป็น ID พิเศษเพื่อให้ระบบ Polling สามารถดึงไปแสดงผลบน OBS ได้ร้อยเปอร์เซ็นต์ในทุก Process
+    const testTxId = `test-alert-${Date.now()}`;
+    await db.saveTransaction({
+      id: testTxId,
+      amount: alertData.amount,
+      donor: alertData.donor,
+      message: alertData.message,
+      status: 'successful',
+      paidAt: alertData.timestamp
+    });
 
     return NextResponse.json({
       success: true,
