@@ -1,7 +1,7 @@
 import './globals.css';
 
 export const metadata = {
-  title: '💝 สนับสนุนและบริจาค (Stream Donation)',
+  title: '💝 สนับสนุนและส่งกำลังใจ (Stream Donation)',
   description: 'ร่วมสนับสนุนและส่งกำลังใจให้พวกเราพัฒนาผลงานต่อไป ✨',
 };
 

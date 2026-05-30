@@ -1,10 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import defaultSettings from '@/src/defaultSettings';
 import './admin.css';
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [widgets, setWidgets] = useState<any[]>([]);
+  const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
+  const [draggedWidgetId, setDraggedWidgetId] = useState<string | null>(null);
+  const [dragStartOffset, setDragStartOffset] = useState({ x: 0, y: 0 });
   const [transactions, setTransactions] = useState([]);
   const [stats, setStats] = useState({ totalAmount: 0, successCount: 0, rate: 0, pending: 0, failed: 0 });
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,7 +45,7 @@ export default function AdminPage() {
   const [ttsVolume, setTtsVolume] = useState(0.8);
   const [ttsRate, setTtsRate] = useState(1.0);
 
-  const [messageTemplate, setMessageTemplate] = useState('{donor} ได้บริจาค {amount} บาท! 🎉');
+  const [messageTemplate, setMessageTemplate] = useState('{donor} ได้ส่งกำลังใจ {amount} บาท! 🎉');
   const [showDonorMessage, setShowDonorMessage] = useState(true);
   const [minAmount, setMinAmount] = useState(1);
 
@@ -155,6 +160,14 @@ export default function AdminPage() {
         setProfanityFilterEnabled(s.profanityFilterEnabled);
         setProfanityReplaceStyle(s.profanityReplaceStyle || 'asterisks');
         setProfanityWords(s.profanityWords || '');
+        const rawWidgets = s.widgets || [];
+        const merged = [...rawWidgets];
+        defaultSettings.widgets.forEach((dw: any) => {
+          if (!merged.some((w: any) => w.id === dw.id)) {
+            merged.push(dw);
+          }
+        });
+        setWidgets(merged);
       }
     } catch (e) {
       console.error('Error loading settings:', e);
@@ -212,7 +225,7 @@ export default function AdminPage() {
 
   const triggerRandomTestAlert = async () => {
     const names = ['สมศักดิ์ รักเรียน', 'แม่ค้าออนไลน์สายลุย', 'น้องเป็ดก้าบๆ 🐤', 'สุดหล่อคีย์บอร์ดเรืองแสง', 'SuraGaming 🎮', 'นินจานักพัฒนา', 'ผู้สนับสนุนลึกลับ'];
-    const messages = ['สู้ๆ นะครับพี่! เป็นกำลังใจให้ทุกไลฟ์เลย 💪', 'ขอเพลงสากลชิลๆ เพลงนึงค่าา 🎵', 'ระบบใหม่เฟี้ยวเงาะมากครับ! ✨', 'บริจาคค่าน้ำเก๊กฮวยเย็นๆ ครับผม 🍺', 'พัฒนาต่อไปครับ ชอบเว็บนี้มาก 🚀', '', 'สุดจัดปลัดบอก ขนาดปลัดลาออกยังต้องบอกว่าสุดจัด!'];
+    const messages = ['สู้ๆ นะครับพี่! เป็นกำลังใจให้ทุกไลฟ์เลย 💪', 'ขอเพลงสากลชิลๆ เพลงนึงค่าา 🎵', 'ระบบใหม่เฟี้ยวเงาะมากครับ! ✨', 'ส่งกำลังใจค่าน้ำเก๊กฮวยเย็นๆ ครับผม 🍺', 'พัฒนาต่อไปครับ ชอบเว็บนี้มาก 🚀', '', 'สุดจัดปลัดบอก ขนาดปลัดลาออกยังต้องบอกว่าสุดจัด!'];
     const amounts = [50, 100, 250, 500, 1000, 2500, 5000];
 
     const donor = names[Math.floor(Math.random() * names.length)];
@@ -249,6 +262,87 @@ export default function AdminPage() {
     return hex;
   };
 
+  // Drag and Drop Canvas Layout handlers
+  const handleWidgetMouseDown = (e: any, id: string) => {
+    e.preventDefault();
+    setSelectedWidgetId(id);
+    setDraggedWidgetId(id);
+
+    const w = widgets.find((x: any) => x.id === id);
+    if (!w) return;
+
+    // Calculate mouse click offset relative to the widget's scaled top-left position
+    const rect = e.currentTarget.parentElement.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    
+    const scaledX = w.x * 0.4;
+    const scaledY = w.y * 0.4;
+
+    setDragStartOffset({
+      x: clickX - scaledX,
+      y: clickY - scaledY
+    });
+  };
+
+  const handleCanvasMouseMove = (e: any) => {
+    if (!draggedWidgetId) return;
+
+    const w = widgets.find((x: any) => x.id === draggedWidgetId);
+    if (!w) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    // Calculate new scaled coordinates
+    let newScaledX = mouseX - dragStartOffset.x;
+    let newScaledY = mouseY - dragStartOffset.y;
+
+    // Scaled widget size
+    const scaledW = w.width * 0.4;
+    const scaledH = w.height * 0.4;
+
+    // Bounds checking inside 768x432 grid
+    if (newScaledX < 0) newScaledX = 0;
+    if (newScaledY < 0) newScaledY = 0;
+    if (newScaledX + scaledW > 768) newScaledX = 768 - scaledW;
+    if (newScaledY + scaledH > 432) newScaledY = 432 - scaledH;
+
+    // Convert back to 1920x1080 base
+    const newX = Math.round(newScaledX / 0.4);
+    const newY = Math.round(newScaledY / 0.4);
+
+    setWidgets((prev: any) =>
+      prev.map((item: any) => (item.id === draggedWidgetId ? { ...item, x: newX, y: newY } : item))
+    );
+  };
+
+  const handleCanvasMouseUp = () => {
+    setDraggedWidgetId(null);
+  };
+
+  const handleWidgetSettingChange = (widgetId: string, key: string, value: any) => {
+    setWidgets((prev: any) =>
+      prev.map((w: any) => {
+        if (w.id !== widgetId) return w;
+        return {
+          ...w,
+          settings: {
+            ...w.settings,
+            [key]: value
+          }
+        };
+      })
+    );
+  };
+
+  const toggleWidgetEnabled = (widgetId: string, enabled: boolean) => {
+    setWidgets((prev: any) =>
+      prev.map((w: any) => (w.id === widgetId ? { ...w, enabled } : w))
+    );
+  };
+
   const handleSaveSettings = async (e) => {
     if (e) e.preventDefault();
 
@@ -282,7 +376,8 @@ export default function AdminPage() {
       
       profanityFilterEnabled,
       profanityWords,
-      profanityReplaceStyle
+      profanityReplaceStyle,
+      widgets
     };
 
     try {
@@ -362,6 +457,12 @@ export default function AdminPage() {
           >
             <span className="icon">🎨</span> Overlay Settings
           </button>
+          <button
+            className={`menu-item ${activeTab === 'canvas-layout' ? 'active' : ''}`}
+            onClick={() => setActiveTab('canvas-layout')}
+          >
+            <span className="icon">📐</span> Layout Canvas
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -379,16 +480,18 @@ export default function AdminPage() {
               {activeTab === 'dashboard' && 'Dashboard Overview'}
               {activeTab === 'transactions' && 'Donation History'}
               {activeTab === 'overlay-config' && 'Overlay Live Settings'}
+              {activeTab === 'canvas-layout' && 'Visual Layout Canvas Editor'}
             </h1>
             <p>
-              {activeTab === 'dashboard' && 'ภาพรวมยอดบริจาคและสถิติระบบ'}
+              {activeTab === 'dashboard' && 'ภาพรวมยอดส่งกำลังใจและสถิติระบบ'}
               {activeTab === 'transactions' && 'ประวัติธุรกรรมและการจำลองส่ง Alert'}
               {activeTab === 'overlay-config' && 'ปรับแต่งดีไซน์ รูปแบบ เสียง และข้อความเตือนของ OBS Stream'}
+              {activeTab === 'canvas-layout' && 'บอร์ดจัดวางและลากจำลองตำแหน่งกล่อง Widgets บนจอไลฟ์สดจริง 1920x1080 (เรียลไทม์)'}
             </p>
           </div>
           <div className="header-right" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <a href="/" target="_blank" rel="noreferrer" className="admin-btn admin-btn-secondary" style={{ textDecoration: 'none' }}>
-              🔗 เปิดหน้าบริจาค
+              🔗 เปิดหน้าส่งกำลังใจ
             </a>
             <button className="admin-btn admin-btn-primary" onClick={triggerRandomTestAlert}>
               ⚡ ยิง Quick Alert
@@ -405,7 +508,7 @@ export default function AdminPage() {
                 <div className="stat-card">
                   <div className="stat-icon amount">฿</div>
                   <div className="stat-info">
-                    <h3>ยอดบริจาครวม</h3>
+                    <h3>ยอดส่งกำลังใจรวม</h3>
                     <h2>฿{stats.totalAmount.toLocaleString('th-TH')}</h2>
                     <span className="stat-trend success">ชำระเงินสำเร็จ</span>
                   </div>
@@ -414,7 +517,7 @@ export default function AdminPage() {
                 <div className="stat-card">
                   <div className="stat-icon count">✅</div>
                   <div className="stat-info">
-                    <h3>บริจาคสำเร็จ (ครั้ง)</h3>
+                    <h3>ส่งกำลังใจสำเร็จ (ครั้ง)</h3>
                     <h2>{stats.successCount.toLocaleString()}</h2>
                     <span className="stat-label">Transactions Completed</span>
                   </div>
@@ -454,7 +557,7 @@ export default function AdminPage() {
                       <thead>
                         <tr>
                           <th>วัน-เวลา</th>
-                          <th>ผู้บริจาค</th>
+                          <th>ผู้ส่งกำลังใจ</th>
                           <th>ยอดเงิน</th>
                           <th>ข้อความ</th>
                           <th>สถานะ</th>
@@ -478,7 +581,7 @@ export default function AdminPage() {
                         ))}
                         {transactions.length === 0 && (
                           <tr>
-                            <td colSpan={5} className="text-center text-muted">ยังไม่มีประวัติการบริจาค</td>
+                            <td colSpan={5} className="text-center text-muted">ยังไม่มีประวัติการส่งกำลังใจ</td>
                           </tr>
                         )}
                       </tbody>
@@ -492,7 +595,7 @@ export default function AdminPage() {
                     <h3>🎬 เชื่อมต่อกับ OBS Studio</h3>
                   </div>
                   <div className="obs-setup-box">
-                    <p>คัดลอก URL ด้านล่างไปใส่ใน **Browser Source** ของ OBS เพื่อเปิดใช้ระบบ Alert บริจาคเด้งขึ้นไลฟ์สด:</p>
+                    <p>คัดลอก URL ด้านล่างไปใส่ใน **Browser Source** ของ OBS เพื่อเปิดใช้ระบบ Alert ส่งกำลังใจเด้งขึ้นไลฟ์สด:</p>
                     <div className="copy-url-group">
                       <input type="text" readOnly value={obsUrl || 'loading...'} />
                       <button className="admin-btn admin-btn-primary" onClick={handleCopyObsUrl}>
@@ -528,7 +631,7 @@ export default function AdminPage() {
                     <span className="search-icon">🔍</span>
                     <input
                       type="text"
-                      placeholder="ค้นหาชื่อผู้บริจาค..."
+                      placeholder="ค้นหาชื่อผู้ส่งกำลังใจ..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -557,7 +660,7 @@ export default function AdminPage() {
                       <tr>
                         <th>วัน-เวลา</th>
                         <th>Reference / ID</th>
-                        <th>ผู้บริจาค</th>
+                        <th>ผู้ส่งกำลังใจ</th>
                         <th>ยอดเงิน</th>
                         <th>ข้อความ</th>
                         <th>สถานะ</th>
@@ -886,7 +989,7 @@ export default function AdminPage() {
                               />
                               <span className="slider-switch"></span>
                             </label>
-                            <span className="switch-label">💡 เปิดอ่านข้อความบริจาคอัตโนมัติ (TTS)</span>
+                            <span className="switch-label">💡 เปิดอ่านข้อความส่งกำลังใจอัตโนมัติ (TTS)</span>
                           </div>
                         </div>
                       </div>
@@ -1019,7 +1122,7 @@ export default function AdminPage() {
                             value={messageTemplate}
                             onChange={(e) => setMessageTemplate(e.target.value)}
                           />
-                          <small className="form-hint">ใช้ <code>{'{donor}'}</code> แทนชื่อผู้บริจาค และ <code>{'{amount}'}</code> แทนจำนวนเงิน</small>
+                          <small className="form-hint">ใช้ <code>{'{donor}'}</code> แทนชื่อผู้ส่งกำลังใจ และ <code>{'{amount}'}</code> แทนจำนวนเงิน</small>
                         </div>
                       </div>
 
@@ -1034,7 +1137,7 @@ export default function AdminPage() {
                               />
                               <span className="slider-switch"></span>
                             </label>
-                            <span className="switch-label">แสดงข้อความแนบของผู้บริจาคด้านล่างตัวเลข</span>
+                            <span className="switch-label">แสดงข้อความแนบของผู้ส่งกำลังใจด้านล่างตัวเลข</span>
                           </div>
                         </div>
                       </div>
@@ -1050,7 +1153,7 @@ export default function AdminPage() {
                             value={minAmount}
                             onChange={(e) => setMinAmount(parseInt(e.target.value) || 1)}
                           />
-                          <small className="form-hint">ยอดบริจาคที่ต่ำกว่านี้จะบันทึกเข้าระบบ แต่จะไม่โชว์กล่องเตือนบนจอไลฟ์สด</small>
+                          <small className="form-hint">ยอดส่งกำลังใจที่ต่ำกว่านี้จะบันทึกเข้าระบบ แต่จะไม่โชว์กล่องเตือนบนจอไลฟ์สด</small>
                         </div>
                       </div>
                     </div>
@@ -1098,6 +1201,493 @@ export default function AdminPage() {
                         หมายเหตุ: ในระบบจริง OBS จะมีพื้นหลังโปร่งใส
                       </span>
                     </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+          {/* SECTION: CANVAS LAYOUT EDITOR */}
+          {activeTab === 'canvas-layout' && (
+            <div className="tab-content active">
+              <div className="canvas-layout-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '20px', alignItems: 'start' }}>
+                
+                {/* 1. The Interactive Board Grid */}
+                <div className="dashboard-card" style={{ padding: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 700 }}>🖥️ บอร์ดจำลองหน้าจอไลฟ์สตรีม (16:9 Scale Grid: 1920x1080)</h3>
+                    <span style={{ fontSize: '12px', background: '#1e293b', padding: '4px 10px', borderRadius: '20px', color: '#94a3b8' }}>
+                      ความละเอียดจริง: 1920 x 1080 px (จำลองสเกล 0.4x)
+                    </span>
+                  </div>
+
+                  <p className="text-muted" style={{ fontSize: '13px', marginBottom: '20px' }}>
+                    💡 <b>วิธีการใช้งาน:</b> คลิกเลือกกล่อง Widget ด้านขวา หรือกดคลิกตรงกล่องบนหน้าจอนี้ จากนั้นใช้เมาส์คลิกค้างเพื่อ <b>ลาก-ย้ายตำแหน่งพิกัด (Drag & Drop)</b> ได้อย่างอิสระ ทุกตำแหน่งและสเกลจะซิงค์กับ OBS อัตโนมัติ!
+                  </p>
+
+                  <div 
+                    className="visual-canvas-grid" 
+                    onMouseMove={handleCanvasMouseMove}
+                    onMouseUp={handleCanvasMouseUp}
+                    onMouseLeave={handleCanvasMouseUp}
+                    style={{ 
+                      position: 'relative', 
+                      width: '768px', 
+                      height: '432px', 
+                      background: '#090d16', 
+                      backgroundImage: 'radial-gradient(rgba(99, 102, 241, 0.15) 1px, transparent 0)',
+                      backgroundSize: '16px 16px',
+                      border: '2px dashed #475569', 
+                      borderRadius: '8px',
+                      boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                      overflow: 'hidden',
+                      margin: '0 auto',
+                      userSelect: 'none'
+                    }}
+                  >
+                    {/* Simulated Stream Wallpaper/Grid overlay */}
+                    <div style={{ position: 'absolute', top: '12px', left: '12px', color: 'rgba(255,255,255,0.06)', fontFamily: 'monospace', fontSize: '12px', pointerEvents: 'none' }}>
+                      SIMULATED LIVE STREAM VIEWPORT
+                    </div>
+
+                    {/* Loop widgets inside canvas */}
+                    {widgets.map((w: any) => {
+                      // Calculate simulated width and height
+                      const simX = w.x * 0.4;
+                      const simY = w.y * 0.4;
+                      const simW = w.width * 0.4;
+                      const simH = w.height * 0.4;
+
+                      const isSelected = selectedWidgetId === w.id;
+
+                      const boxStyle = {
+                        position: 'absolute' as 'absolute',
+                        left: `${simX}px`,
+                        top: `${simY}px`,
+                        width: `${simW}px`,
+                        height: `${simH}px`,
+                        transform: `scale(${w.scale})`,
+                        transformOrigin: 'top left',
+                        cursor: draggedWidgetId === w.id ? 'grabbing' : 'grab',
+                        border: isSelected ? '2px solid #6366f1' : w.enabled ? '1px solid rgba(255, 255, 255, 0.25)' : '1px dashed rgba(255, 255, 255, 0.15)',
+                        borderRadius: '6px',
+                        background: isSelected ? 'rgba(99, 102, 241, 0.25)' : w.enabled ? 'rgba(30, 41, 59, 0.75)' : 'rgba(30, 41, 59, 0.25)',
+                        backdropFilter: 'blur(4px)',
+                        boxShadow: isSelected ? '0 0 15px rgba(99, 102, 241, 0.5)' : '0 4px 10px rgba(0,0,0,0.3)',
+                        display: 'flex',
+                        flexDirection: 'column' as 'column',
+                        justifyContent: 'center' as 'center',
+                        alignItems: 'center' as 'center',
+                        padding: '6px',
+                        zIndex: isSelected ? 1000 : 10,
+                        transition: draggedWidgetId === w.id ? 'none' : 'border 0.2s, background 0.2s, box-shadow 0.2s',
+                        color: isSelected ? '#ffffff' : w.enabled ? '#cbd5e1' : '#64748b',
+                        opacity: w.enabled ? 1 : 0.55
+                      };
+
+                      return (
+                        <div 
+                          key={w.id} 
+                          style={boxStyle}
+                          onMouseDown={(e) => handleWidgetMouseDown(e, w.id)}
+                        >
+                          {/* Widget icon emoji */}
+                          <span style={{ fontSize: '16px', marginBottom: '2px', opacity: w.enabled ? 1 : 0.6 }}>
+                            {w.id === 'donation-alert' && '💝'}
+                            {w.id === 'donation-goal' && '🎯'}
+                            {w.id === 'recent-donors' && '💖'}
+                            {w.id === 'custom-banner' && '📢'}
+                            {w.id === 'qr-code' && '📱'}
+                          </span>
+                          <span style={{ fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center', lineHeight: 1.2 }}>
+                            {w.name.split(' (')[0]} {!w.enabled && <span style={{ fontSize: '8px', color: '#ef4444', display: 'block', marginTop: '2px' }}>(ปิดอยู่)</span>}
+                          </span>
+                          {/* Scaled coordinates indicator */}
+                          <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', marginTop: '4px', fontFamily: 'monospace' }}>
+                            X:{w.x}, Y:{w.y}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Save button block */}
+                  <div style={{ marginTop: '25px', display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                    <button 
+                      onClick={() => handleSaveSettings(null)}
+                      className="admin-btn admin-btn-primary" 
+                      style={{ padding: '10px 24px', fontSize: '14px', borderRadius: '8px' }}
+                    >
+                      💾 บันทึกและซิงค์การตั้งค่าบอร์ด
+                    </button>
+                    <button 
+                      onClick={reloadPreviewFrame}
+                      className="admin-btn admin-btn-secondary" 
+                      style={{ padding: '10px 18px', fontSize: '14px', borderRadius: '8px' }}
+                    >
+                      🔄 รีเฟรชพรีวิว
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Right Sidebar Configurator panel */}
+                <div className="canvas-sidebar-config">
+                  <div className="dashboard-card" style={{ padding: '20px', minHeight: '432px' }}>
+                    <h3 style={{ fontSize: '15px', fontWeight: 700, borderBottom: '1px solid #1e293b', paddingBottom: '10px', marginBottom: '15px' }}>
+                      ⚙️ ปรับแต่ง Widget เฉพาะตัว
+                    </h3>
+
+                    {/* If no widget is selected */}
+                    {!selectedWidgetId && (
+                      <div style={{ display: 'flex', flexDirection: 'column' as 'column', alignItems: 'center', justifyContent: 'center', height: '300px', color: '#64748b', textAlign: 'center' }}>
+                        <span style={{ fontSize: '32px', marginBottom: '10px' }}>🖱️</span>
+                        <p style={{ fontSize: '13px', lineHeight: 1.4 }}>คลิกเลือกกล่อง Widget บนแผงบอร์ดซ้าย เพื่อเปิดตัวเลือกการตั้งค่าพิกัดและพารามิเตอร์</p>
+                      </div>
+                    )}
+
+                    {/* If a widget is selected */}
+                    {selectedWidgetId && (() => {
+                      const selectedWidget = widgets.find(x => x.id === selectedWidgetId);
+                      if (!selectedWidget) return null;
+
+                      return (
+                        <div className="widget-settings-form">
+                          {/* Widget Header Info */}
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '15px', background: 'rgba(99, 102, 241, 0.08)', padding: '10px', borderRadius: '6px', border: '1px solid rgba(99, 102, 241, 0.15)' }}>
+                            <span style={{ fontSize: '20px' }}>
+                              {selectedWidget.id === 'donation-alert' && '💝'}
+                              {selectedWidget.id === 'donation-goal' && '🎯'}
+                              {selectedWidget.id === 'recent-donors' && '💖'}
+                              {selectedWidget.id === 'custom-banner' && '📢'}
+                              {selectedWidget.id === 'qr-code' && '📱'}
+                            </span>
+                            <div>
+                              <h4 style={{ fontSize: '13px', fontWeight: 700, color: '#f3f4f6' }}>{selectedWidget.name}</h4>
+                              <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace' }}>ID: {selectedWidget.id}</span>
+                            </div>
+                          </div>
+
+                          {/* Enable/Disable Switch */}
+                          <div className="form-group" style={{ marginBottom: '15px' }}>
+                            <div className="switch-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <label className="switch">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedWidget.enabled}
+                                  onChange={(e) => toggleWidgetEnabled(selectedWidget.id, e.target.checked)}
+                                />
+                                <span className="slider-switch"></span>
+                              </label>
+                              <span className="switch-label" style={{ fontSize: '12px', fontWeight: 600, color: '#cbd5e1' }}>
+                                เปิดใช้งาน Widget นี้บนไลฟ์สด
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Basic Coordinates */}
+                          <div className="coordinates-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                            <div className="form-group">
+                              <label style={{ display: 'block', color: '#9ca3af', fontSize: '11px', marginBottom: '4px' }}>พิกัดแกน X (px)</label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={selectedWidget.x}
+                                min="0"
+                                max="1920"
+                                onChange={(e) => {
+                                  const val = Math.min(1920, Math.max(0, Number(e.target.value) || 0));
+                                  setWidgets((prev: any) =>
+                                    prev.map((item: any) => (item.id === selectedWidget.id ? { ...item, x: val } : item))
+                                  );
+                                }}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label style={{ display: 'block', color: '#9ca3af', fontSize: '11px', marginBottom: '4px' }}>พิกัดแกน Y (px)</label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={selectedWidget.y}
+                                min="0"
+                                max="1080"
+                                onChange={(e) => {
+                                  const val = Math.min(1080, Math.max(0, Number(e.target.value) || 0));
+                                  setWidgets((prev: any) =>
+                                    prev.map((item: any) => (item.id === selectedWidget.id ? { ...item, y: val } : item))
+                                  );
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Dimensions & Scale */}
+                          <div className="coordinates-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                            <div className="form-group">
+                              <label style={{ display: 'block', color: '#9ca3af', fontSize: '11px', marginBottom: '4px' }}>ความกว้าง (px)</label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={selectedWidget.width}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value) || 100;
+                                  setWidgets((prev: any) =>
+                                    prev.map((item: any) => (item.id === selectedWidget.id ? { ...item, width: val } : item))
+                                  );
+                                }}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label style={{ display: 'block', color: '#9ca3af', fontSize: '11px', marginBottom: '4px' }}>ความสูง (px)</label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={selectedWidget.height}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value) || 50;
+                                  setWidgets((prev: any) =>
+                                    prev.map((item: any) => (item.id === selectedWidget.id ? { ...item, height: val } : item))
+                                  );
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="form-group" style={{ marginBottom: '15px' }}>
+                            <label style={{ display: 'block', color: '#9ca3af', fontSize: '11px', marginBottom: '4px' }}>ขนาดสเกลภาพ (Scale: <span>{selectedWidget.scale.toFixed(1)}</span>x)</label>
+                            <input
+                              type="range"
+                              className="form-range"
+                              min="0.5"
+                              max="2.5"
+                              step="0.1"
+                              value={selectedWidget.scale}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                setWidgets((prev: any) =>
+                                  prev.map((item: any) => (item.id === selectedWidget.id ? { ...item, scale: val } : item))
+                                );
+                              }}
+                            />
+                          </div>
+
+                          {/* Specific Settings for Donation Goal Widget */}
+                          {selectedWidget.id === 'donation-goal' && selectedWidget.settings && (
+                            <div className="widget-special-settings" style={{ marginTop: '20px', background: '#111827', padding: '16px', borderRadius: '8px', border: '1px solid #1f2937' }}>
+                              <h4 className="section-divider" style={{ fontSize: '13px', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', marginBottom: '15px', borderBottom: '1px solid #1f2937', paddingBottom: '6px' }}>🎯 ตั้งค่าเป้าหมายแคมเปญ</h4>
+                              
+                              <div className="form-group" style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', color: '#9ca3af', fontSize: '12px', marginBottom: '4px' }}>หัวข้อเป้าหมายสตรีม</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={selectedWidget.settings.title || ''}
+                                  onChange={(e) => handleWidgetSettingChange('donation-goal', 'title', e.target.value)}
+                                />
+                              </div>
+
+                              <div className="form-group" style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', color: '#9ca3af', fontSize: '12px', marginBottom: '4px' }}>ยอดส่งกำลังใจเป้าหมาย (บาท)</label>
+                                <input
+                                  type="number"
+                                  className="form-control"
+                                  value={selectedWidget.settings.target || 0}
+                                  onChange={(e) => handleWidgetSettingChange('donation-goal', 'target', Number(e.target.value))}
+                                />
+                              </div>
+
+                              <div className="form-group" style={{ marginBottom: '12px' }}>
+                                <div className="switch-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <label className="switch">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedWidget.settings.autoCalculate !== false}
+                                      onChange={(e) => handleWidgetSettingChange('donation-goal', 'autoCalculate', e.target.checked)}
+                                    />
+                                    <span className="slider-switch"></span>
+                                  </label>
+                                  <span className="switch-label" style={{ fontSize: '12px', color: '#9ca3af' }}>
+                                    คำนวณยอดเงินรวมจาก Database อัตโนมัติ
+                                  </span>
+                                </div>
+                              </div>
+
+                              {!selectedWidget.settings.autoCalculate && (
+                                <div className="form-group" style={{ marginBottom: '12px' }}>
+                                  <label style={{ display: 'block', color: '#9ca3af', fontSize: '12px', marginBottom: '4px' }}>ยอดสะสมปัจจุบัน (ระบุเอง)</label>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    value={selectedWidget.settings.current || 0}
+                                    onChange={(e) => handleWidgetSettingChange('donation-goal', 'current', Number(e.target.value))}
+                                  />
+                                </div>
+                              )}
+
+                              <div className="form-group">
+                                <label style={{ display: 'block', color: '#9ca3af', fontSize: '12px', marginBottom: '4px' }}>สีหลักของแถบสะสม</label>
+                                <div className="color-input-wrapper" style={{ display: 'flex', gap: '8px' }}>
+                                  <input
+                                    type="color"
+                                    value={selectedWidget.settings.color || '#10b981'}
+                                    onChange={(e) => handleWidgetSettingChange('donation-goal', 'color', e.target.value)}
+                                    style={{ height: '38px', width: '48px', border: '1px solid #374151', borderRadius: '6px' }}
+                                  />
+                                  <input
+                                    type="text"
+                                    className="hex-text"
+                                    value={selectedWidget.settings.color || '#10b981'}
+                                    onChange={(e) => handleWidgetSettingChange('donation-goal', 'color', e.target.value)}
+                                    style={{ flex: 1, background: '#1f2937', color: '#f3f4f6', border: '1px solid #374151', borderRadius: '6px', padding: '8px' }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Specific Settings for Recent Donors Widget */}
+                          {selectedWidget.id === 'recent-donors' && selectedWidget.settings && (
+                            <div className="widget-special-settings" style={{ marginTop: '20px', background: '#111827', padding: '16px', borderRadius: '8px', border: '1px solid #1f2937' }}>
+                              <h4 className="section-divider" style={{ fontSize: '13px', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', marginBottom: '15px', borderBottom: '1px solid #1f2937', paddingBottom: '6px' }}>💖 ตั้งค่ากล่องคนส่งกำลังใจล่าสุด</h4>
+                              
+                              <div className="form-group" style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', color: '#9ca3af', fontSize: '12px', marginBottom: '4px' }}>หัวข้อของกล่อง Widget</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={selectedWidget.settings.title || ''}
+                                  onChange={(e) => handleWidgetSettingChange('recent-donors', 'title', e.target.value)}
+                                />
+                              </div>
+
+                              <div className="form-group" style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', color: '#9ca3af', fontSize: '12px', marginBottom: '4px' }}>รูปแบบการแสดงผล</label>
+                                <select
+                                  className="form-select"
+                                  value={selectedWidget.settings.displayMode || 'list'}
+                                  onChange={(e) => {
+                                    const mode = e.target.value;
+                                    handleWidgetSettingChange('recent-donors', 'displayMode', mode);
+                                    // Automatically adjust dimensions to fit horizontal bar vs vertical box
+                                    if (mode === 'bar') {
+                                      setWidgets((prev: any) =>
+                                        prev.map((item: any) => (item.id === 'recent-donors' ? { ...item, width: 800, height: 50 } : item))
+                                      );
+                                    } else {
+                                      setWidgets((prev: any) =>
+                                        prev.map((item: any) => (item.id === 'recent-donors' ? { ...item, width: 400, height: 350 } : item))
+                                      );
+                                    }
+                                  }}
+                                  style={{ background: '#1f2937', color: '#f3f4f6', border: '1px solid #374151', borderRadius: '6px', padding: '8px', width: '100%', outline: 'none' }}
+                                >
+                                  <option value="list">กล่องแนวตั้ง (Vertical List Box)</option>
+                                  <option value="bar">แถบวิ่งแนวนอน (Horizontal Ticker Bar)</option>
+                                </select>
+                              </div>
+
+                              {(selectedWidget.settings.displayMode === 'bar') && (
+                                <div className="form-group" style={{ marginBottom: '12px' }}>
+                                  <label style={{ display: 'block', color: '#9ca3af', fontSize: '12px', marginBottom: '4px' }}>เอฟเฟกต์การเคลื่อนไหว</label>
+                                  <select
+                                    className="form-select"
+                                    value={selectedWidget.settings.animationType || 'marquee'}
+                                    onChange={(e) => handleWidgetSettingChange('recent-donors', 'animationType', e.target.value)}
+                                    style={{ background: '#1f2937', color: '#f3f4f6', border: '1px solid #374151', borderRadius: '6px', padding: '8px', width: '100%', outline: 'none' }}
+                                  >
+                                    <option value="marquee">เลื่อนสไลด์จากขวาไปซ้าย (Marquee Ticker)</option>
+                                    <option value="fade-slide-up">ผุดขึ้นมาจากข้างล่างทีละชื่อ (Slide Up News)</option>
+                                  </select>
+                                </div>
+                              )}
+
+                              <div className="form-group" style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', color: '#9ca3af', fontSize: '12px', marginBottom: '4px' }}>แสดงรายชื่อสูงสุด (จำนวนคน)</label>
+                                <input
+                                  type="number"
+                                  className="form-control"
+                                  min="1"
+                                  max="15"
+                                  value={selectedWidget.settings.limit || 5}
+                                  onChange={(e) => handleWidgetSettingChange('recent-donors', 'limit', Number(e.target.value))}
+                                />
+                              </div>
+
+                              <div className="form-group">
+                                <div className="switch-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <label className="switch">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedWidget.settings.showAmount !== false}
+                                      onChange={(e) => handleWidgetSettingChange('recent-donors', 'showAmount', e.target.checked)}
+                                    />
+                                    <span className="slider-switch"></span>
+                                  </label>
+                                  <span className="switch-label" style={{ fontSize: '12px', color: '#9ca3af' }}>
+                                    แสดงยอดเงินที่ส่งกำลังใจแนบรายชื่อด้วย
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Specific Settings for Custom Banner Widget */}
+                          {selectedWidget.id === 'custom-banner' && selectedWidget.settings && (
+                            <div className="widget-special-settings" style={{ marginTop: '20px', background: '#111827', padding: '16px', borderRadius: '8px', border: '1px solid #1f2937' }}>
+                              <h4 className="section-divider" style={{ fontSize: '13px', fontWeight: 700, color: '#6366f1', textTransform: 'uppercase', marginBottom: '15px', borderBottom: '1px solid #1f2937', paddingBottom: '6px' }}>📢 ตั้งค่ากล่องข้อความประชาสัมพันธ์</h4>
+                              
+                              <div className="form-group">
+                                <label style={{ display: 'block', color: '#9ca3af', fontSize: '12px', marginBottom: '6px' }}>รหัสโค้ด HTML หรือข้อความธรรมดา (รองรับ Inline CSS)</label>
+                                <textarea
+                                  className="form-control"
+                                  rows={6}
+                                  value={selectedWidget.settings.html || ''}
+                                  onChange={(e) => handleWidgetSettingChange('custom-banner', 'html', e.target.value)}
+                                  style={{ width: '100%', fontFamily: 'monospace', fontSize: '12px', background: '#1f2937', color: '#34d399', border: '1px solid #374151', borderRadius: '6px', padding: '8px' }}
+                                />
+                                <small className="form-hint" style={{ display: 'block', color: '#9ca3af', fontSize: '11px', marginTop: '6px', lineHeight: 1.4 }}>
+                                  * คุณสามารถเขียนสไตล์ระบุขนาดฟอนต์ สี แสงเงา เพื่อจัดความสวยงามได้ตามชอบ
+                                </small>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Specific Settings for QR Code Widget */}
+                          {selectedWidget.id === 'qr-code' && selectedWidget.settings && (
+                            <div className="widget-special-settings" style={{ marginTop: '20px', background: '#111827', padding: '16px', borderRadius: '8px', border: '1px solid #1f2937' }}>
+                              <h4 className="section-divider" style={{ fontSize: '13px', fontWeight: 700, color: '#eab308', textTransform: 'uppercase', marginBottom: '15px', borderBottom: '1px solid #1f2937', paddingBottom: '6px' }}>📱 ตั้งค่ากล่องสแกนคิวอาร์โค้ด</h4>
+                              
+                              <div className="form-group" style={{ marginBottom: '12px' }}>
+                                <label style={{ display: 'block', color: '#9ca3af', fontSize: '12px', marginBottom: '4px' }}>หัวข้อ Widget (ข้อความแนะนำ)</label>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={selectedWidget.settings.title || ''}
+                                  onChange={(e) => handleWidgetSettingChange('qr-code', 'title', e.target.value)}
+                                />
+                              </div>
+
+                              <div className="form-group">
+                                <div className="switch-group" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <label className="switch">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedWidget.settings.showLabel !== false}
+                                      onChange={(e) => handleWidgetSettingChange('qr-code', 'showLabel', e.target.checked)}
+                                    />
+                                    <span className="slider-switch"></span>
+                                  </label>
+                                  <span className="switch-label" style={{ fontSize: '12px', color: '#9ca3af' }}>
+                                    แสดงหัวข้อด้านบนคิวอาร์โค้ด
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 

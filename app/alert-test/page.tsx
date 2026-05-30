@@ -327,7 +327,7 @@ export default function AlertTestPage() {
           </div>
 
           <div className="form-group">
-            <label>ชื่อผู้บริจาค</label>
+            <label>ชื่อผู้ส่งกำลังใจ</label>
             <input
               type="text"
               placeholder="Anonymous"

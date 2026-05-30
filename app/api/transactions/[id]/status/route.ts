@@ -29,9 +29,11 @@ export async function POST(request, { params }) {
     if (status === 'successful') {
       const alertPayload = {
         type: 'donation',
+        id: updatedTx.id || id,
         donor: updatedTx.donor || 'Anonymous',
         amount: updatedTx.amount || 0,
         message: updatedTx.message || '',
+        status: 'successful',
         timestamp: new Date().toISOString(),
         isManualTrigger: true
       };

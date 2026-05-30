@@ -65,6 +65,7 @@ export async function GET(request) {
             donor: tx.donor || 'Anonymous',
             amount: Number(tx.amount) || 0,
             message: tx.message || '',
+            status: 'successful',
             timestamp: tx.paidAt
           };
 

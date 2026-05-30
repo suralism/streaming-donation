@@ -520,3 +520,633 @@ body {
   border: none !important;
   padding: 0 !important;
 }
+
+/* ========== 1. Donation Goal Widget Styling ========== */
+.widget-goal {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-family: var(--font-family);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Themes for Goal Widget */
+.widget-goal.theme-glassmorphism {
+  background: rgba(15, 15, 25, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.widget-goal.theme-cyberpunk {
+  background: #05070f;
+  border: 2px solid var(--primary-color);
+  border-radius: 0px;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.25);
+  font-family: 'Chakra Petch', monospace;
+}
+
+.widget-goal.theme-minimal {
+  background: #ffffff;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.widget-goal.theme-custom {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+.widget-goal.theme-text-only {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 8px 0 !important;
+}
+
+/* Goal Inside Elements */
+.goal-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.widget-goal.theme-cyberpunk .goal-title {
+  color: #ff007f;
+  text-shadow: 0 0 5px rgba(255, 0, 127, 0.4);
+}
+
+.widget-goal.theme-minimal .goal-title {
+  color: #333333;
+}
+
+.widget-goal.theme-glassmorphism .goal-title,
+.widget-goal.theme-custom .goal-title {
+  color: #ffffff;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.widget-goal.theme-cyberpunk .goal-progress-text {
+  color: #00f3ff;
+}
+
+.widget-goal.theme-minimal .goal-progress-text {
+  color: #666666;
+}
+
+.widget-goal.theme-glassmorphism .goal-progress-text,
+.widget-goal.theme-custom .goal-progress-text {
+  color: #a5b4fc;
+}
+
+.goal-bar-outer {
+  width: 100%;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.widget-goal.theme-cyberpunk .goal-bar-outer {
+  border-radius: 0px;
+  border: 1px solid rgba(0, 243, 255, 0.3);
+  background: #090a15;
+}
+
+.widget-goal.theme-minimal .goal-bar-outer {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.goal-bar-inner {
+  height: 100%;
+  border-radius: 20px;
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+
+.widget-goal.theme-cyberpunk .goal-bar-inner {
+  border-radius: 0px;
+}
+
+.goal-bar-inner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shineGoal 2.5s infinite linear;
+}
+
+@keyframes shineGoal {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+
+/* ========== 2. Recent Donors Widget Styling ========== */
+.widget-recent {
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-family);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Themes for Recent Widget */
+.widget-recent.theme-glassmorphism {
+  background: rgba(15, 15, 25, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45);
+}
+
+.widget-recent.theme-cyberpunk {
+  background: #05070f;
+  border: 2px solid var(--primary-color);
+  border-radius: 0px;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.25);
+  font-family: 'Chakra Petch', monospace;
+}
+
+.widget-recent.theme-minimal {
+  background: #ffffff;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.widget-recent.theme-custom {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+.widget-recent.theme-text-only {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 10px 0 !important;
+}
+
+/* Recent Header */
+.widget-recent h4 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 8px;
+}
+
+.widget-recent.theme-glassmorphism h4,
+.widget-recent.theme-custom h4 {
+  color: #ffffff;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.widget-recent.theme-cyberpunk h4 {
+  color: #ff007f;
+  text-transform: uppercase;
+  border-bottom-color: rgba(255, 0, 127, 0.3);
+  text-shadow: 0 0 5px rgba(255, 0, 127, 0.4);
+}
+
+.widget-recent.theme-minimal h4 {
+  color: #111111;
+  border-bottom-color: #f1f5f9;
+}
+
+/* Recent List Container */
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Recent Item Layout */
+.recent-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.widget-recent.theme-glassmorphism .recent-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: #e0e7ff;
+}
+.widget-recent.theme-glassmorphism .recent-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.widget-recent.theme-cyberpunk .recent-item {
+  background: #090a15;
+  border: 1px solid rgba(0, 243, 255, 0.15);
+  color: #ffffff;
+  border-radius: 0px;
+}
+.widget-recent.theme-cyberpunk .recent-item:hover {
+  border-color: rgba(0, 243, 255, 0.45);
+  background: #0c0e22;
+}
+
+.widget-recent.theme-minimal .recent-item {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  color: #334155;
+}
+.widget-recent.theme-minimal .recent-item:hover {
+  background: #f1f5f9;
+}
+
+.widget-recent.theme-custom .recent-item {
+  background: rgba(0,0,0,0.15);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+.recent-donor-name {
+  font-weight: 600;
+}
+
+.recent-donor-amount {
+  font-weight: 700;
+}
+
+.widget-recent.theme-glassmorphism .recent-donor-amount {
+  color: #a5b4fc;
+}
+
+.widget-recent.theme-cyberpunk .recent-donor-amount {
+  color: #00f3ff;
+}
+
+.widget-recent.theme-minimal .recent-donor-amount {
+  color: #0f172a;
+}
+
+.recent-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  flex: 1;
+}
+
+
+/* ========== 3. Custom Overlay Widget Styling ========== */
+.widget-custom {
+  box-sizing: border-box;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.widget-custom.theme-glassmorphism {
+  background: rgba(15, 15, 25, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.widget-custom.theme-cyberpunk {
+  background: #05070f;
+  border: 2px solid var(--primary-color);
+  border-radius: 0px;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.25);
+  font-family: 'Chakra Petch', monospace;
+}
+
+.widget-custom.theme-minimal {
+  background: #ffffff;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.widget-custom.theme-custom {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+.widget-custom.theme-text-only {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* ========== 4. Recent Donors Ticker (Horizontal Bar) Styling ========== */
+.widget-recent-bar {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-family);
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 0 15px;
+  height: 50px;
+}
+
+/* Themes for Recent Bar Ticker */
+.widget-recent-bar.theme-glassmorphism {
+  background: rgba(15, 15, 25, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 25px; /* circular bar capsule */
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.widget-recent-bar.theme-cyberpunk {
+  background: #05070f;
+  border: 2px solid var(--primary-color);
+  border-radius: 0px;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.25);
+  font-family: 'Chakra Petch', monospace;
+}
+
+.widget-recent-bar.theme-minimal {
+  background: #ffffff;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.widget-recent-bar.theme-custom {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+}
+
+.widget-recent-bar.theme-text-only {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Horizontal Ticker Layout */
+.recent-bar-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-right: 15px;
+  padding-right: 15px;
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.widget-recent-bar.theme-cyberpunk .recent-bar-label {
+  color: #ff007f;
+  border-right-color: rgba(255, 0, 127, 0.3);
+  text-shadow: 0 0 5px rgba(255, 0, 127, 0.4);
+}
+
+.widget-recent-bar.theme-minimal .recent-bar-label {
+  color: #111111;
+  border-right-color: #f1f5f9;
+}
+
+.widget-recent-bar.theme-glassmorphism .recent-bar-label,
+.widget-recent-bar.theme-custom .recent-bar-label {
+  color: #ffffff;
+}
+
+/* Marquee Scroll animation wrapper */
+.recent-marquee-container {
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+  position: relative;
+}
+
+.recent-marquee-content {
+  display: inline-flex;
+  gap: 30px;
+  padding-left: 100%; /* Start from far right */
+  animation: marquee 25s linear infinite;
+  align-items: center;
+}
+
+.recent-marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.widget-recent-bar.theme-glassmorphism .recent-marquee-item,
+.widget-recent-bar.theme-custom .recent-marquee-item {
+  color: #cbd5e1;
+}
+
+.widget-recent-bar.theme-minimal .recent-marquee-item {
+  color: #334155;
+}
+
+.widget-recent-bar.theme-cyberpunk .recent-marquee-item {
+  color: #ffffff;
+}
+
+.recent-bar-amount {
+  font-weight: 700;
+}
+
+.widget-recent-bar.theme-glassmorphism .recent-bar-amount,
+.widget-recent-bar.theme-custom .recent-bar-amount {
+  color: #a5b4fc;
+}
+
+.widget-recent-bar.theme-cyberpunk .recent-bar-amount {
+  color: #00f3ff;
+}
+
+.widget-recent-bar.theme-minimal .recent-bar-amount {
+  color: #0f172a;
+}
+
+/* Marquee animation definition */
+@keyframes marquee {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-100%, 0, 0); }
+}
+
+/* Fade Slide Up anim container */
+.recent-up-container {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  flex: 1;
+}
+
+.recent-up-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  position: absolute;
+  left: 0;
+  width: 100%;
+}
+
+.widget-recent-bar.theme-glassmorphism .recent-up-item,
+.widget-recent-bar.theme-custom .recent-up-item {
+  color: #cbd5e1;
+}
+
+.widget-recent-bar.theme-minimal .recent-up-item {
+  color: #334155;
+}
+
+.widget-recent-bar.theme-cyberpunk .recent-up-item {
+  color: #ffffff;
+}
+
+.anim-up {
+  animation: slideUpFade 4s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+}
+
+@keyframes slideUpFade {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  8%, 92% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+}
+
+/* ========== 5. QR Code Widget Styling ========== */
+.widget-qr {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-family);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.widget-qr.theme-glassmorphism {
+  background: rgba(15, 15, 25, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.widget-qr.theme-cyberpunk {
+  background: #05070f;
+  border: 2px solid var(--primary-color);
+  border-radius: 0px;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.25);
+  font-family: 'Chakra Petch', monospace;
+}
+
+.widget-qr.theme-minimal {
+  background: #ffffff;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+}
+
+.widget-qr.theme-custom {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+.widget-qr.theme-text-only {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 8px 0 !important;
+}
+
+.qr-title-row {
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.widget-qr.theme-cyberpunk .qr-title {
+  color: #ff007f;
+  text-shadow: 0 0 5px rgba(255, 0, 127, 0.4);
+}
+
+.widget-qr.theme-minimal .qr-title {
+  color: #333333;
+}
+
+.widget-qr.theme-glassmorphism .qr-title,
+.widget-qr.theme-custom .qr-title {
+  color: #ffffff;
+}
+
+.qr-body {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+

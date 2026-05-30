@@ -32,7 +32,7 @@ export default function DonationPage() {
 
   const getButtonText = () => {
     if (loading) return loadingText || 'กำลังดำเนินการ...';
-    if (selectedAmount >= 1) return `บริจาค ฿${selectedAmount.toLocaleString()}`;
+    if (selectedAmount >= 1) return `ส่งกำลังใจ ฿${selectedAmount.toLocaleString()}`;
     return 'ดำเนินการต่อ';
   };
 
@@ -86,7 +86,7 @@ export default function DonationPage() {
           <form className="card glass-card" onSubmit={handleSubmit}>
             <div className="header">
               <div className="glowing-heart">💝</div>
-              <h1>บริจาคสนับสนุน</h1>
+              <h1>ส่งกำลังใจสนับสนุน</h1>
               <p className="subtitle">ร่วมสนับสนุนและส่งกำลังใจให้พวกเราพัฒนาผลงานต่อไป ✨</p>
             </div>
 
@@ -124,7 +124,7 @@ export default function DonationPage() {
 
             {/* Donor info */}
             <div className="donor-info">
-              <label htmlFor="donorName">ชื่อผู้บริจาค (จะโชว์บนหน้าจอสตรีม)</label>
+              <label htmlFor="donorName">ชื่อผู้ส่งกำลังใจ (จะโชว์บนหน้าจอสตรีม)</label>
               <input
                 id="donorName"
                 type="text"

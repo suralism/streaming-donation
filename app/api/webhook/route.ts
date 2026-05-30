@@ -68,9 +68,11 @@ export async function POST(request) {
       const txDetails = (await getTransactionById(targetId)) || {};
       const alertPayload = {
         type: 'donation',
+        id: targetId,
         donor: txDetails.donor || 'Anonymous',
         amount: amount || txDetails.amount || 0,
         message: txDetails.message || charge.description || '',
+        status: 'successful',
         timestamp: new Date().toISOString()
       };
       

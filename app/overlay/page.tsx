@@ -3,50 +3,62 @@
 import { useEffect, useState, useRef } from 'react';
 import './overlay.css';
 
-// Initial / default settings
-const defaultSettings = {
-  duration: 8,
-  soundEnabled: true,
-  soundChoice: 'chime',
-  soundVolume: 0.5,
-  ttsEnabled: false,
-  ttsVolume: 0.8,
-  ttsRate: 1.0,
-  ttsLanguage: 'th-TH',
-  ttsVoice: 'default',
-  profanityFilterEnabled: true,
-  profanityWords: 'ควย, เย็ด, สัส, เหี้ย, หี, แตด, ล่อ, ดอกทอง, ส้นตีน, อีดอก, อีเหี้ย, พ่อง, แม่มึง, กู, มึง',
-  profanityReplaceStyle: 'asterisks',
-  messageTemplate: '{donor} ได้บริจาค {amount} บาท! 🎉',
-  showDonorMessage: true,
-  minAmount: 1,
-  theme: 'glassmorphism',
-  animation: 'slide-down',
-  fontFamily: 'Noto Sans Thai',
-  primaryColor: '#667eea',
-  secondaryColor: '#764ba2',
-  backgroundColor: 'rgba(15, 15, 25, 0.88)',
-  textColor: '#ffffff',
-  borderColor: 'rgba(255, 255, 255, 0.25)',
-  particleCount: 15,
-  fontSize: 32
-};
+import defaultSettings from '@/src/defaultSettings';
 
 export default function OverlayPage() {
   const [settings, setSettings] = useState(defaultSettings);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [scale, setScale] = useState(1);
   const [currentAlert, setCurrentAlert] = useState(null);
   const [isExiting, setIsExiting] = useState(false);
   const [particles, setParticles] = useState([]);
+  const [activeRecentIdx, setActiveRecentIdx] = useState(0);
 
   const queueRef = useRef([]);
   const isShowingRef = useRef(false);
   const settingsRef = useRef(defaultSettings);
+
+  // Interval for cycling recent donors sequentially (headline news-ticker style)
+  useEffect(() => {
+    const successfulTx = transactions.filter((tx: any) => tx.status === 'successful');
+    if (successfulTx.length <= 1) {
+      setActiveRecentIdx(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setActiveRecentIdx((prev) => (prev + 1) % successfulTx.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [transactions]);
 
   // Sync settings ref
   useEffect(() => {
     settingsRef.current = settings;
     applyStyleProperties(settings);
   }, [settings]);
+
+  // Adaptive viewport auto-scaling for preview mode / OBS custom aspect ratios
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window === 'undefined') return;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      
+      const standardWidth = 1920;
+      const standardHeight = 1080;
+      
+      const scaleX = viewportWidth / standardWidth;
+      const scaleY = viewportHeight / standardHeight;
+      
+      // Standard scale to fit viewport completely
+      const newScale = Math.min(scaleX, scaleY);
+      setScale(newScale || 1);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Apply CSS Custom variables
   const applyStyleProperties = (s) => {
@@ -351,7 +363,7 @@ export default function OverlayPage() {
     if (settingsRef.current.ttsEnabled) {
       const filteredDonor = filterProfanity(currentAlert.donor || 'Anonymous', settingsRef.current);
       const filteredMessage = filterProfanity(currentAlert.message || '', settingsRef.current);
-      const speakText = `${filteredDonor} บริจาค ${currentAlert.amount} บาท. ${currentAlert.message ? `ฝากข้อความว่า ${filteredMessage}` : ''}`;
+      const speakText = `${filteredDonor} ส่งกำลังใจ ${currentAlert.amount} บาท. ${currentAlert.message ? `ฝากข้อความว่า ${filteredMessage}` : ''}`;
       
       ttsTimer = setTimeout(() => {
         speakMessage(speakText, settingsRef.current.ttsLanguage, settingsRef.current.ttsVolume, settingsRef.current.ttsRate, settingsRef.current.ttsVoice);
@@ -406,7 +418,21 @@ export default function OverlayPage() {
       }
     };
 
+    const loadTransactions = async () => {
+      try {
+        const res = await fetch('/api/transactions');
+        if (res.ok) {
+          const data = await res.json();
+          const successful = data.filter((t: any) => t.status === 'successful');
+          setTransactions(successful);
+        }
+      } catch (e) {
+        console.error('Error loading initial transactions for widgets:', e);
+      }
+    };
+
     loadSettings();
+    loadTransactions();
 
     // Setup SSE connection
     let eventSource;
@@ -446,6 +472,12 @@ export default function OverlayPage() {
             console.log('💝 Queueing new donation alert:', data);
             queueRef.current.push(data);
             processQueue();
+
+            // Prepend new donation to transactions list for live widgets update
+            setTransactions(prev => {
+              if (prev.some(t => t.id === data.id)) return prev;
+              return [data, ...prev];
+            });
           }
         } catch (err) {
           console.error('Error parsing SSE payload:', err);
@@ -469,77 +501,336 @@ export default function OverlayPage() {
     };
   }, []);
 
-  if (!currentAlert) return <div id="alertContainer" />;
+  // Format alert details if active
+  let amountFormatted = '';
+  let filteredHeader = '';
+  let filteredMessage = '';
+  let shouldHideLabel = false;
+  let labelText = '';
+  let alertBoxClasses = '';
 
-  // Format header using template
-  const amountFormatted = Number(currentAlert.amount).toLocaleString('th-TH', { minimumFractionDigits: 0 });
-  const messageTemplate = settings.messageTemplate || '{donor} ได้บริจาค {amount} บาท! 🎉';
-  
-  const headerText = messageTemplate
-    .replace(/{donor}/g, currentAlert.donor || 'Anonymous')
-    .replace(/{amount}/g, amountFormatted);
+  if (currentAlert) {
+    amountFormatted = Number(currentAlert.amount).toLocaleString('th-TH', { minimumFractionDigits: 0 });
+    const messageTemplate = settings.messageTemplate || '{donor} ได้ส่งกำลังใจ {amount} บาท! 🎉';
+    
+    const headerText = messageTemplate
+      .replace(/{donor}/g, currentAlert.donor || 'Anonymous')
+      .replace(/{amount}/g, amountFormatted);
 
-  const filteredHeader = filterProfanity(headerText, settings);
-  const filteredMessage = filterProfanity(currentAlert.message || '', settings);
+    filteredHeader = filterProfanity(headerText, settings);
+    filteredMessage = filterProfanity(currentAlert.message || '', settings);
 
-  // Check if we should hide the small alert label
-  const tempLower = messageTemplate.toLowerCase();
-  const shouldHideLabel = tempLower.includes('{amount}') || tempLower.includes('บริจาค') || tempLower.includes('donate');
-  const labelText = (settings.theme === 'cyberpunk' || settings.theme === 'minimal') ? 'PAY' : 'บริจาค';
+    // Check if we should hide the small alert label
+    const tempLower = messageTemplate.toLowerCase();
+    shouldHideLabel = tempLower.includes('{amount}') || tempLower.includes('บริจาค') || tempLower.includes('ส่งกำลังใจ') || tempLower.includes('donate');
+    labelText = (settings.theme === 'cyberpunk' || settings.theme === 'minimal') ? 'PAY' : 'ส่งกำลังใจ';
 
-  const alertBoxClasses = [
-    'alert-box',
-    `theme-${settings.theme}`,
-    `anim-${settings.animation}`,
-    isExiting ? 'exit' : ''
-  ].filter(Boolean).join(' ');
+    alertBoxClasses = [
+      'alert-box',
+      `theme-${settings.theme}`,
+      `anim-${settings.animation}`,
+      isExiting ? 'exit' : ''
+    ].filter(Boolean).join(' ');
+  }
+
+  const activeWidgets = (settings as any).widgets || [];
 
   return (
-    <div id="alertContainer">
-      <div className={alertBoxClasses}>
-        <div className="alert-glow" />
-        <div className="alert-content">
-          <div className="alert-icon">
-            <span className="icon-emoji">💝</span>
-            <div className="icon-ring" />
-          </div>
-          <div className="alert-info">
-            <div className="alert-header">
-              <span className="donor-name">{filteredHeader}</span>
-              {!shouldHideLabel && <span className="alert-label">{labelText}</span>}
-            </div>
-            <div className="alert-amount">฿{amountFormatted}</div>
-            {settings.showDonorMessage && currentAlert.message && (
-              <div className="alert-message">{filteredMessage}</div>
-            )}
-          </div>
-        </div>
-        <div className="alert-progress">
-          <div 
-            className="alert-progress-bar"
-            style={{
-              animation: `progressShrink ${(Number(settings.duration) || 8) * 1000}ms linear forwards`
-            }}
-          />
-        </div>
-      </div>
+    <div className="overlay-container" style={{
+      position: 'absolute' as 'absolute',
+      left: '50%',
+      top: '50%',
+      width: '1920px',
+      height: '1080px',
+      transform: `translate(-50%, -50%) scale(${scale})`,
+      transformOrigin: 'center center',
+      overflow: 'hidden',
+      background: 'transparent'
+    }}>
+      
+      {/* 1. RENDER DONATION ALERT WIDGET */}
+      {(() => {
+        const w = activeWidgets.find(x => x.id === 'donation-alert');
+        if (!w || !w.enabled || !currentAlert) return null;
 
-      {/* Render flying particles */}
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          className="particle"
-          style={{
-            left: p.left,
-            top: p.top,
-            backgroundColor: p.backgroundColor,
-            width: p.width,
-            height: p.height,
-            '--tx': p.tx,
-            '--ty': p.ty
-          } as React.CSSProperties}
-        />
-      ))}
+        const widgetStyle = {
+          position: 'absolute' as 'absolute',
+          left: `${w.x}px`,
+          top: `${w.y}px`,
+          width: `${w.width}px`,
+          height: `${w.height}px`,
+          transform: `scale(${w.scale})`,
+          transformOrigin: 'top left',
+          pointerEvents: 'auto' as 'auto',
+          zIndex: 9999
+        };
+
+        return (
+          <div style={widgetStyle} id="alertContainer">
+            <div className={alertBoxClasses}>
+              <div className="alert-glow" />
+              <div className="alert-content">
+                <div className="alert-icon">
+                  <span className="icon-emoji">💝</span>
+                  <div className="icon-ring" />
+                </div>
+                <div className="alert-info">
+                  <div className="alert-header">
+                    <span className="donor-name">{filteredHeader}</span>
+                    {!shouldHideLabel && <span className="alert-label">{labelText}</span>}
+                  </div>
+                  <div className="alert-amount">฿{amountFormatted}</div>
+                  {settings.showDonorMessage && currentAlert.message && (
+                    <div className="alert-message">{filteredMessage}</div>
+                  )}
+                </div>
+              </div>
+              <div className="alert-progress">
+                <div 
+                  className="alert-progress-bar"
+                  style={{
+                    animation: `progressShrink ${(Number(settings.duration) || 8) * 1000}ms linear forwards`
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Render flying particles inside the alert box coordinates */}
+            {particles.map((p: any) => (
+              <div
+                key={p.id}
+                className="particle"
+                style={{
+                  left: p.left,
+                  top: p.top,
+                  backgroundColor: p.backgroundColor,
+                  width: p.width,
+                  height: p.height,
+                  '--tx': p.tx,
+                  '--ty': p.ty
+                } as React.CSSProperties}
+              />
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* 2. RENDER DONATION GOAL WIDGET */}
+      {(() => {
+        const w = activeWidgets.find(x => x.id === 'donation-goal');
+        if (!w || !w.enabled) return null;
+
+        const target = w.settings?.target || 5000;
+        const autoCalculate = w.settings?.autoCalculate !== false;
+        let current = w.settings?.current || 0;
+        if (autoCalculate) {
+          current = transactions
+            .filter((tx: any) => tx.status === 'successful')
+            .reduce((sum, tx: any) => sum + (Number(tx.amount) || 0), 0);
+        }
+        
+        const percent = Math.min(100, Math.max(0, (current / target) * 100));
+        const color = w.settings?.color || '#10b981';
+
+        const widgetStyle = {
+          position: 'absolute' as 'absolute',
+          left: `${w.x}px`,
+          top: `${w.y}px`,
+          width: `${w.width}px`,
+          height: `${w.height}px`,
+          transform: `scale(${w.scale})`,
+          transformOrigin: 'top left',
+          pointerEvents: 'auto' as 'auto'
+        };
+
+        return (
+          <div style={widgetStyle} className={`widget-goal theme-${settings.theme}`}>
+            <div className="goal-title-row">
+              <span className="goal-title">{w.settings?.title || 'เป้าหมายสตรีม 🎯'}</span>
+              <span className="goal-progress-text">฿{current.toLocaleString()} / ฿{target.toLocaleString()} ({percent.toFixed(0)}%)</span>
+            </div>
+            <div className="goal-bar-outer">
+              <div 
+                className="goal-bar-inner" 
+                style={{ 
+                  width: `${percent}%`, 
+                  backgroundColor: color,
+                  boxShadow: `0 0 10px ${color}`
+                }} 
+              />
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 3. RENDER RECENT DONORS WIDGET */}
+      {(() => {
+        const w = activeWidgets.find(x => x.id === 'recent-donors');
+        if (!w || !w.enabled) return null;
+
+        const limit = w.settings?.limit || 5;
+        const showAmount = w.settings?.showAmount !== false;
+        const list = transactions
+          .filter((tx: any) => tx.status === 'successful')
+          .slice(0, limit);
+
+        const widgetStyle = {
+          position: 'absolute' as 'absolute',
+          left: `${w.x}px`,
+          top: `${w.y}px`,
+          width: `${w.width}px`,
+          height: `${w.height}px`,
+          transform: `scale(${w.scale})`,
+          transformOrigin: 'top left',
+          pointerEvents: 'auto' as 'auto'
+        };
+
+        const displayMode = w.settings?.displayMode || 'list';
+        const animationType = w.settings?.animationType || 'marquee';
+
+        if (displayMode === 'bar') {
+          return (
+            <div style={widgetStyle} className={`widget-recent-bar theme-${settings.theme}`}>
+              <div className="recent-bar-label">
+                <span>💖 {w.settings?.title || 'ล่าสุด'}</span>
+              </div>
+              {animationType === 'marquee' ? (
+                <div className="recent-marquee-container">
+                  <div className="recent-marquee-content">
+                    {list.map((tx: any, idx) => {
+                      const amountFormatted = (Number(tx.amount) || 0).toLocaleString();
+                      return (
+                        <div key={tx.id || idx} className="recent-marquee-item">
+                          <span>👤 {tx.donor || 'Anonymous'}</span>
+                          {showAmount && <span className="recent-bar-amount">฿{amountFormatted}</span>}
+                          {idx < list.length - 1 && <span style={{ opacity: 0.3, margin: '0 5px' }}>|</span>}
+                        </div>
+                      );
+                    })}
+                    {list.length === 0 && (
+                      <span style={{ fontSize: '12px', opacity: 0.5, fontStyle: 'italic' }}>ยังไม่มีรายชื่อผู้ส่งกำลังใจ</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="recent-up-container">
+                  {list.map((tx: any, idx) => {
+                    const isActive = idx === (activeRecentIdx % Math.max(1, list.length));
+                    if (!isActive) return null;
+                    const amountFormatted = (Number(tx.amount) || 0).toLocaleString();
+                    return (
+                      <div key={tx.id || idx} className="recent-up-item anim-up">
+                        <span>👤 {tx.donor || 'Anonymous'}</span>
+                        {showAmount && <span className="recent-bar-amount">฿{amountFormatted}</span>}
+                      </div>
+                    );
+                  })}
+                  {list.length === 0 && (
+                    <span style={{ fontSize: '12px', opacity: 0.5, fontStyle: 'italic' }}>ยังไม่มีรายชื่อผู้ส่งกำลังใจ</span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        return (
+          <div style={widgetStyle} className={`widget-recent theme-${settings.theme}`}>
+            <div className="recent-header">
+              <h4>{w.settings?.title || 'ผู้สนับสนุนล่าสุด 💖'}</h4>
+            </div>
+            <div className="recent-list">
+              {list.map((tx: any, idx) => {
+                const amountFormatted = (Number(tx.amount) || 0).toLocaleString();
+                return (
+                  <div key={tx.id || idx} className="recent-item">
+                    <span className="recent-donor-name">{tx.donor || 'Anonymous'}</span>
+                    {showAmount && <span className="recent-donor-amount">฿{amountFormatted}</span>}
+                  </div>
+                );
+              })}
+              {list.length === 0 && (
+                <div className="recent-empty">ยังไม่มีรายชื่อผู้ส่งกำลังใจ</div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 4. RENDER CUSTOM BANNER WIDGET */}
+      {(() => {
+        const w = activeWidgets.find(x => x.id === 'custom-banner');
+        if (!w || !w.enabled) return null;
+
+        const html = w.settings?.html || 'Welcome to the Stream!';
+
+        const widgetStyle = {
+          position: 'absolute' as 'absolute',
+          left: `${w.x}px`,
+          top: `${w.y}px`,
+          width: `${w.width}px`,
+          height: `${w.height}px`,
+          transform: `scale(${w.scale})`,
+          transformOrigin: 'top left',
+          pointerEvents: 'auto' as 'auto',
+          overflow: 'hidden'
+        };
+
+        return (
+          <div 
+            style={widgetStyle} 
+            className={`widget-custom theme-${settings.theme}`}
+            dangerouslySetInnerHTML={{ __html: html }}
+          />
+        );
+      })()}
+
+      {/* 5. RENDER QR CODE WIDGET */}
+      {(() => {
+        const w = activeWidgets.find(x => x.id === 'qr-code');
+        if (!w || !w.enabled) return null;
+
+        const donationUrl = typeof window !== 'undefined' ? `${window.location.origin}/` : 'http://localhost:3000/';
+        const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(donationUrl)}`;
+
+        const widgetStyle = {
+          position: 'absolute' as 'absolute',
+          left: `${w.x}px`,
+          top: `${w.y}px`,
+          width: `${w.width}px`,
+          height: `${w.height}px`,
+          transform: `scale(${w.scale})`,
+          transformOrigin: 'top left',
+          pointerEvents: 'auto' as 'auto'
+        };
+
+        return (
+          <div style={widgetStyle} className={`widget-qr theme-${settings.theme}`}>
+            {w.settings?.showLabel !== false && (
+              <div className="qr-title-row">
+                <span className="qr-title">{w.settings?.title || 'ส่งกำลังใจที่นี่ 💝'}</span>
+              </div>
+            )}
+            <div className="qr-body">
+              <img 
+                src={qrImgUrl} 
+                alt="Donation QR Code" 
+                className="qr-image"
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  aspectRatio: '1/1',
+                  borderRadius: settings.theme === 'cyberpunk' ? '0px' : '8px',
+                  border: settings.theme === 'cyberpunk' ? '2px solid var(--primary-color)' : '1px solid rgba(255,255,255,0.1)',
+                  padding: '6px',
+                  background: '#ffffff'
+                }}
+              />
+            </div>
+          </div>
+        );
+      })()}
+
     </div>
   );
 }
