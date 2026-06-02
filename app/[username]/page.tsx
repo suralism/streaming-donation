@@ -1,8 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import '@/app/globals.css';
 
-export default function DonationPage() {
+export default function CreatorDonationPage({ params }: { params: Promise<{ username: string }> }) {
+  const unwrappedParams = React.use(params);
+  const username = unwrappedParams.username;
+  
+  const [creator, setCreator] = useState<any>(null);
+  const [settings, setSettings] = useState<any>(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  
   const [selectedAmount, setSelectedAmount] = useState(0);
   const [customAmount, setCustomAmount] = useState('');
   const [donorName, setDonorName] = useState('');
@@ -15,6 +23,31 @@ export default function DonationPage() {
     message: string;
   }>({ show: false, title: '', message: '' });
 
+  useEffect(() => {
+    const fetchCreatorDetails = async () => {
+      try {
+        const res = await fetch(`/api/users/${username}`);
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'เกิดข้อผิดพลาดในการโหลดข้อมูล');
+        }
+        const data = await res.json();
+        setCreator(data.user);
+        setSettings(data.settings);
+        
+        // Dynamically apply primary/secondary colors from settings if custom colors are configured
+        if (data.settings) {
+          const doc = document.documentElement;
+          doc.style.setProperty('--primary-color', data.settings.primaryColor || '#6366f1');
+          doc.style.setProperty('--secondary-color', data.settings.secondaryColor || '#a855f7');
+        }
+      } catch (err: any) {
+        setErrorMsg(err.message);
+      }
+    };
+    fetchCreatorDetails();
+  }, [username]);
+
   const presets = [
     { amount: 50, label: '50 ดวง', desc: 'ส่งหัวใจ 50 ดวง' },
     { amount: 100, label: '100 ดวง', desc: 'ส่งหัวใจ 100 ดวง' },
@@ -22,12 +55,12 @@ export default function DonationPage() {
     { amount: 500, label: '500 ดวง', desc: 'ส่งหัวใจ 500 ดวง' },
   ];
 
-  const handlePresetSelect = (amount) => {
+  const handlePresetSelect = (amount: number) => {
     setSelectedAmount(amount);
     setCustomAmount('');
   };
 
-  const handleCustomAmountChange = (e) => {
+  const handleCustomAmountChange = (e: any) => {
     const val = parseInt(e.target.value) || 0;
     setSelectedAmount(val);
     setCustomAmount(e.target.value);
@@ -41,7 +74,7 @@ export default function DonationPage() {
     return 'ดำเนินการต่อ';
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     if (selectedAmount < 1) return;
 
@@ -55,7 +88,8 @@ export default function DonationPage() {
         body: JSON.stringify({
           amount: selectedAmount,
           name: donorName,
-          message: donorMessage
+          message: donorMessage,
+          creatorUsername: username
         })
       });
 
@@ -71,11 +105,33 @@ export default function DonationPage() {
       } else {
         throw new Error('ไม่ได้รับลิงก์ชำระเงินจากเซิร์ฟเวอร์');
       }
-    } catch (err) {
+    } catch (err: any) {
       setModalConfig({ show: true, title: 'เกิดข้อผิดพลาด', message: err.message });
       setLoading(false);
     }
   };
+
+  if (errorMsg) {
+    return (
+      <div className="container" style={{ textAlign: 'center' }}>
+        <div className="card glass-card">
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
+          <h2>ไม่พบชื่อผู้ใช้นี้ในระบบ</h2>
+          <p className="subtitle" style={{ marginTop: '10px' }}>โปรดตรวจสอบลิงก์ส่งหัวใจของคุณอีกครั้ง</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!creator) {
+    return (
+      <div className="container" style={{ textAlign: 'center' }}>
+        <div className="card glass-card">
+          <p className="subtitle">กำลังดาวน์โหลดข้อมูลผู้รับหัวใจ...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -91,8 +147,10 @@ export default function DonationPage() {
           <form className="card glass-card" onSubmit={handleSubmit}>
             <div className="header">
               <div className="glowing-heart"><span className="heart-icon heart-lg" /></div>
-              <h1>ส่งหัวใจสนับสนุน</h1>
-              <p className="subtitle">ร่วมส่งหัวใจเพื่อเป็นกำลังใจให้ครีเอเตอร์พัฒนาผลงานต่อไป (1 ดวง = 1 บาท) ✨</p>
+              <h1>ส่งหัวใจสนับสนุน {creator.displayName}</h1>
+              <p className="subtitle">
+                ร่วมส่งหัวใจเพื่อเป็นกำลังใจให้ {creator.displayName} (1 ดวง = 1 บาท) ✨
+              </p>
             </div>
 
             {/* Preset options */}

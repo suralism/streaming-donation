@@ -5,6 +5,9 @@ import defaultSettings from '@/src/defaultSettings';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get('userId') || 'system';
+
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
@@ -20,14 +23,20 @@ export async function GET(request) {
   // Track settings changes dynamically
   let lastSettingsStr = '';
   try {
-    const initSettings = await db.getSettings(defaultSettings);
+    const initSettings = await db.getSettings(defaultSettings, userId);
     lastSettingsStr = JSON.stringify(initSettings);
   } catch (e) {}
 
   // 1. In-memory Subscriber function (as a backup/real-time booster)
   const alertHandler = (data) => {
     try {
+      if (data.type === 'settings_update') {
+        if (data.userId && data.userId !== userId) return;
+      }
       if (data.type === 'donation') {
+        const txCreatorId = data.creator_id || data.creatorId || 'system';
+        if (txCreatorId !== userId) return; // Ignore if not matching
+
         const txId = data.id || data.referenceId;
         if (txId) {
           if (sentTxIds.has(txId)) return; // skip duplicate
@@ -41,7 +50,7 @@ export async function GET(request) {
   };
 
   sseRegistry.on('alert', alertHandler);
-  console.log(`🔗 SSE Client connected. Current active listeners: ${sseRegistry.listenerCount('alert')}`);
+  console.log(`🔗 SSE Client connected for ${userId}. Current active listeners: ${sseRegistry.listenerCount('alert')}`);
 
   // 2. Database-backed polling to bridge separate Node.js processes/isolated threads in Next.js
   const dbPollInterval = setInterval(async () => {
@@ -49,7 +58,7 @@ export async function GET(request) {
       // Poll successful transactions
       const transactions = await db.getTransactions(true);
       const newSuccessfulTx = transactions.filter(
-        (tx) => tx.status === 'successful' && tx.paidAt && tx.paidAt > lastCheckedTime
+        (tx) => tx.status === 'successful' && tx.paidAt && tx.paidAt > lastCheckedTime && (tx.creator_id || 'system') === userId
       );
 
       // Sort chronological order
@@ -66,11 +75,12 @@ export async function GET(request) {
             amount: Number(tx.amount) || 0,
             message: tx.message || '',
             status: 'successful',
-            timestamp: tx.paidAt
+            timestamp: tx.paidAt,
+            creator_id: tx.creator_id
           };
 
           writer.write(encoder.encode(`data: ${JSON.stringify(alertPayload)}\n\n`));
-          console.log(`📡 [SSE Poll] Pushed missing database alert for: ${alertPayload.donor}, Amount: ${alertPayload.amount}`);
+          console.log(`📡 [SSE Poll] Pushed database alert for: ${alertPayload.donor}, Amount: ${alertPayload.amount} to creator: ${userId}`);
         }
 
         if (tx.paidAt && tx.paidAt > lastCheckedTime) {
@@ -94,12 +104,12 @@ export async function GET(request) {
     if (settingsPollCount >= 2) {
       settingsPollCount = 0;
       try {
-        const currentSettings = await db.getSettings(defaultSettings);
+        const currentSettings = await db.getSettings(defaultSettings, userId);
         const currentSettingsStr = JSON.stringify(currentSettings);
         if (currentSettingsStr !== lastSettingsStr) {
           lastSettingsStr = currentSettingsStr;
           writer.write(encoder.encode(`data: ${JSON.stringify({ type: 'settings_update', settings: currentSettings })}\n\n`));
-          console.log(`📡 [SSE Poll] Sent live settings update to OBS`);
+          console.log(`📡 [SSE Poll] Sent live settings update to OBS for ${userId}`);
         }
       } catch (e) {}
     }

@@ -10,7 +10,15 @@ export async function GET(request) {
       return new Response('Text is required', { status: 400 });
     }
 
-    const encodedText = encodeURIComponent(text);
+    // Fix Google Translate TTS spelling bug and apply phonetic testing
+    let processedText = text;
+    if (lang === 'th' || lang.startsWith('th')) {
+      processedText = processedText
+        .replace(/ดวง/g, 'ห้อง')
+        .replace(/ส่งหัวใจ/g, 'ส่งหัวใจ');
+    }
+
+    const encodedText = encodeURIComponent(processedText);
     const googleTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodedText}`;
 
     const response = await fetch(googleTtsUrl, {

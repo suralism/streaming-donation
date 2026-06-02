@@ -5,9 +5,11 @@ import sseRegistry from '@/src/sseRegistry';
 
 const { getSettings, saveSettings } = db;
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const settings = await getSettings(defaultSettings);
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId') || undefined;
+    const settings = await getSettings(defaultSettings, userId);
     return NextResponse.json(settings);
   } catch (error) {
     console.error('Fetch settings error:', error);
@@ -20,14 +22,17 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId') || undefined;
     const body = await request.json();
     const newSettings = { ...defaultSettings, ...body };
-    const savedSettings = await saveSettings(newSettings);
+    const savedSettings = await saveSettings(newSettings, userId);
 
     // Emit live settings update to active overlays
     sseRegistry.emit('alert', {
       type: 'settings_update',
-      settings: savedSettings
+      settings: savedSettings,
+      userId: userId || 'system'
     });
 
     return NextResponse.json({ success: true, settings: savedSettings });

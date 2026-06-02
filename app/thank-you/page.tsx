@@ -1,8 +1,8 @@
 import Link from 'next/link';
 
 export const metadata = {
-  title: 'ขอบคุณสำหรับการสนับสนุน! 💝',
-  description: 'ขอบคุณสำหรับการสนับสนุนที่อบอุ่นของคุณ ทุกบาททุกสตางค์มีความหมายกับพวกเราเป็นอย่างยิ่ง ✨',
+  title: 'ขอบคุณสำหรับการสนับสนุน! ✨',
+  description: 'ขอบคุณสำหรับการส่งหัวใจสนับสนุน หัวใจของคุณจะถูกส่งมอบให้ครีเอเตอร์ที่คุณเลือกทันที ✨',
 };
 
 export default function ThankYouPage() {
@@ -17,11 +17,11 @@ export default function ThankYouPage() {
 
       <div className="container">
         <div className="card glass-card thank-you">
-          <div className="icon glowing-heart">💝</div>
+          <div className="icon glowing-heart" style={{ display: 'flex', justifyContent: 'center' }}><span className="heart-icon heart-lg" /></div>
           <h1>ขอบคุณมากค่ะ!</h1>
           <p className="subtitle">
-            สำหรับการสนับสนุนที่อบอุ่นของคุณ<br />
-            ทุกบาททุกสตางค์มีความหมายในการเดินทางของพวกเราอย่างยิ่ง ✨
+            หัวใจของคุณได้ถูกส่งมอบไปยังครีเอเตอร์เรียบร้อยแล้ว<br />
+            ทุกดวงหัวใจมีความหมายในการเดินทางของพวกเราอย่างยิ่ง ✨
           </p>
           <Link href="/" className="btn-primary" style={{ textDecoration: 'none', display: 'block', textAlign: 'center' }}>
             กลับหน้าหลัก

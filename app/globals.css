@@ -105,89 +105,132 @@ body {
 /* ========== Core Container ========== */
 .container {
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
   z-index: 2;
+  padding: 10px;
 }
 
-/* ========== Glassmorphic Card Panel ========== */
+/* ========== Glassmorphic Card Panel (Premium Redesign) ========== */
 .card.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius-lg);
-  padding: 35px 30px;
-  box-shadow: var(--shadow-premium), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: rgba(10, 12, 22, 0.65);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 28px;
+  padding: 40px 32px;
+  box-shadow: 
+    0 30px 60px -15px rgba(0, 0, 0, 0.8),
+    0 0 50px -10px rgba(99, 102, 241, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.08);
   position: relative;
   overflow: hidden;
+  transition: var(--transition-smooth);
 }
 
-/* Inner glow accent */
 .card.glass-card::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 100px;
-  background: linear-gradient(180deg, rgba(168, 85, 247, 0.08) 0%, rgba(168, 85, 247, 0) 100%);
+  height: 150px;
+  background: radial-gradient(circle at top, rgba(168, 85, 247, 0.15) 0%, rgba(168, 85, 247, 0) 70%);
   pointer-events: none;
 }
 
 /* ========== Header Section ========== */
 .header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
 }
 
 .glowing-heart, .glowing-qr {
-  font-size: 48px;
+  font-size: 40px;
   display: inline-block;
-  margin-bottom: 12px;
-  filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.6));
-  animation: pulseGlow 2.5s infinite ease-in-out;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.5));
+  animation: pulseGlow 3s infinite ease-in-out;
 }
 
 @keyframes pulseGlow {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.5)); }
-  50% { transform: scale(1.08); filter: drop-shadow(0 0 20px rgba(236, 72, 153, 0.8)); }
+  0%, 100% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.4)); }
+  50% { transform: scale(1.05) translateY(-4px); filter: drop-shadow(0 0 25px rgba(236, 72, 153, 0.7)); }
+}
+
+/* ========== Heart Icon (Premium SVG, always works) ========== */
+.heart-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='hg' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23ff8fab'/%3E%3Cstop offset='40%25' stop-color='%23fb5c8e'/%3E%3Cstop offset='70%25' stop-color='%23e91e63'/%3E%3Cstop offset='100%25' stop-color='%23c2185b'/%3E%3C/linearGradient%3E%3CradialGradient id='sh' cx='0.35' cy='0.35' r='0.4'%3E%3Cstop offset='0%25' stop-color='white' stop-opacity='0.55'/%3E%3Cstop offset='100%25' stop-color='white' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z' fill='url(%23hg)'/%3E%3Cpath d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z' fill='url(%23sh)'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 1px 4px rgba(233, 30, 99, 0.4));
+  position: relative;
+}
+
+/* Heart icon sizes */
+.heart-icon.heart-lg {
+  width: 48px;
+  height: 48px;
+  filter: drop-shadow(0 3px 10px rgba(233, 30, 99, 0.5));
+}
+
+.heart-icon.heart-md {
+  width: 26px;
+  height: 26px;
+}
+
+.heart-icon.heart-sm {
+  width: 20px;
+  height: 20px;
+}
+
+.heart-icon.heart-xs {
+  width: 16px;
+  height: 16px;
 }
 
 .header h1, .header h2 {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 800;
   color: #ffffff;
-  letter-spacing: -0.02em;
-  margin-bottom: 8px;
-  background: linear-gradient(90deg, #ffffff, #d8b4fe);
+  letter-spacing: -0.03em;
+  margin-bottom: 10px;
+  background: linear-gradient(135deg, #ffffff 30%, #d8b4fe 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .subtitle {
   color: var(--text-muted);
-  font-size: 13.5px;
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.6;
   font-weight: 400;
+  max-width: 90%;
+  margin: 0 auto;
 }
 
-/* ========== Preset Amount Grid Buttons ========== */
+/* ========== Preset Amount Grid (Sleek minimalist redesign) ========== */
 .amount-options {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-  margin-bottom: 25px;
+  gap: 12px;
+  margin-bottom: 28px;
 }
 
 .amount-btn {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: var(--border-radius-md);
-  padding: 16px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
+  padding: 18px 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   cursor: pointer;
   transition: var(--transition-smooth);
   position: relative;
@@ -198,10 +241,25 @@ body {
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--primary-gradient);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
   opacity: 0;
   transition: opacity 0.3s ease;
   z-index: 1;
+}
+
+.amount-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid transparent;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #6366f1, #a855f7) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: destination-out;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 3;
 }
 
 .amount-btn * {
@@ -211,42 +269,52 @@ body {
 }
 
 .amount-emoji {
-  font-size: 24px;
-  margin-bottom: 2px;
-  transition: transform 0.25s ease;
+  font-size: 20px;
+  margin-bottom: 0px;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .amount-val {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
-  color: #ffffff;
+  color: #f3f4f6;
+  letter-spacing: -0.01em;
 }
 
 .amount-desc {
   font-size: 11px;
-  color: var(--text-muted);
-  font-weight: 400;
+  color: #6b7280;
+  font-weight: 500;
+  transition: color 0.3s ease;
 }
 
 /* Hover States */
 .amount-btn:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(168, 85, 247, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
   transform: translateY(-2px);
 }
 
 .amount-btn:hover .amount-emoji {
-  transform: scale(1.2) rotate(5deg);
+  transform: scale(1.15) translateY(-2px);
+}
+
+.amount-btn:hover .amount-desc {
+  color: #9ca3af;
 }
 
 /* Selected Preset State */
 .amount-btn.selected {
+  background: rgba(168, 85, 247, 0.06);
   border-color: transparent;
-  box-shadow: 0 8px 25px rgba(168, 85, 247, 0.35);
-  transform: translateY(-3px) scale(1.02);
+  transform: translateY(-2px);
 }
 
 .amount-btn.selected::before {
+  opacity: 1;
+}
+
+.amount-btn.selected::after {
   opacity: 1;
 }
 
@@ -255,55 +323,55 @@ body {
 }
 
 .amount-btn.selected .amount-desc {
-  color: rgba(255, 255, 255, 0.85);
+  color: #c084fc;
 }
 
-/* ========== Custom Amount Area ========== */
+/* ========== Custom Amount Area (Refined UI) ========== */
 .custom-amount {
-  margin-bottom: 25px;
+  margin-bottom: 28px;
 }
 
 .custom-amount label, .donor-info label {
   display: block;
-  color: var(--text-label);
-  font-size: 12px;
-  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 8px;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
 }
 
 .input-group {
   display: flex;
   align-items: center;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius-md);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
   overflow: hidden;
   transition: var(--transition-smooth);
 }
 
 .input-group:focus-within {
-  border-color: #a855f7;
-  box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.15);
   background: rgba(0, 0, 0, 0.35);
 }
 
 .currency {
-  padding: 14px 18px;
-  background: rgba(255, 255, 255, 0.03);
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.01);
   color: #a855f7;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  border-right: 1px solid var(--glass-border);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .input-group input {
   flex: 1;
   background: transparent;
   border: none;
-  padding: 14px 18px;
-  font-size: 18px;
+  padding: 16px 20px;
+  font-size: 16px;
   font-weight: 600;
   color: #ffffff;
   outline: none;
@@ -314,28 +382,29 @@ body {
   font-weight: 400;
 }
 
-/* ========== Donor Info Elements ========== */
+/* ========== Donor Info Elements (Refined UI) ========== */
 .donor-info {
-  margin-bottom: 30px;
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.donor-info label {
-  margin-top: 15px;
-}
-
-.donor-info label:first-of-type {
-  margin-top: 0;
+.donor-field {
+  display: flex;
+  flex-direction: column;
 }
 
 .donor-info input,
 .donor-info textarea {
   width: 100%;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   color: #ffffff;
-  border-radius: var(--border-radius-md);
-  padding: 14px 16px;
-  font-size: 13.5px;
+  border-radius: 16px;
+  padding: 16px 18px;
+  font-size: 14px;
+  line-height: 1.5;
   outline: none;
   transition: var(--transition-smooth);
   resize: none;
@@ -343,36 +412,36 @@ body {
 
 .donor-info input::placeholder,
 .donor-info textarea::placeholder {
-  color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.2);
 }
 
 .donor-info input:focus,
 .donor-info textarea:focus {
-  border-color: #a855f7;
-  box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+  border-color: rgba(168, 85, 247, 0.5);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.15);
   background: rgba(0, 0, 0, 0.35);
 }
 
-/* ========== Custom Action Buttons ========== */
+/* ========== Action Buttons (Premium Redesign) ========== */
 .btn-primary {
   width: 100%;
-  padding: 18px;
-  font-size: 16px;
+  padding: 18px 24px;
+  font-size: 15px;
   font-weight: 700;
   color: #ffffff;
-  background: var(--primary-gradient);
-  background-size: 200% auto;
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
   border: none;
-  border-radius: var(--border-radius-md);
+  border-radius: 16px;
   cursor: pointer;
   transition: var(--transition-smooth);
-  box-shadow: 0 10px 20px -10px rgba(168, 85, 247, 0.5);
+  box-shadow: 0 12px 30px -10px rgba(168, 85, 247, 0.5);
+  letter-spacing: -0.01em;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-position: right center;
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(168, 85, 247, 0.45);
+  box-shadow: 0 15px 35px -5px rgba(168, 85, 247, 0.6);
+  background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -380,8 +449,9 @@ body {
 }
 
 .btn-primary:disabled {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.15);
   box-shadow: none;
   cursor: not-allowed;
 }
@@ -392,18 +462,18 @@ body {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--border-radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
   cursor: pointer;
-  margin-top: 15px;
+  margin-top: 16px;
   transition: var(--transition-smooth);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* ========== Thank You Page Specific Styles ========== */
@@ -520,3 +590,99 @@ input[type=number] {
   justify-content: flex-end;
   gap: 12px;
 }
+
+/* ========== Clean Auth Pages Redesign Styles ========== */
+.auth-card-clean {
+  background: rgba(10, 13, 23, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: 36px 30px;
+  box-shadow: 
+    0 20px 40px -15px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+.auth-header-clean {
+  text-align: center;
+  margin-bottom: 26px;
+}
+
+.auth-header-clean h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  background: none;
+  -webkit-text-fill-color: initial;
+}
+
+.auth-header-clean .subtitle {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 400;
+  margin: 0 auto;
+}
+
+.auth-input-clean {
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  color: #ffffff;
+  outline: none;
+  font-size: 14px;
+  transition: all 0.2s ease-in-out;
+}
+
+.auth-input-clean:focus {
+  border-color: #8b5cf6;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.auth-input-clean::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.auth-input-clean:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-button-clean {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  fontWeight: 600;
+  fontSize: 14.5px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px -6px rgba(124, 58, 237, 0.4);
+  transition: all 0.2s ease-in-out;
+}
+
+.auth-button-clean:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -4px rgba(124, 58, 237, 0.5);
+  background: linear-gradient(135deg, #6d28d9 0%, #9333ea 100%);
+}
+
+.auth-button-clean:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.auth-button-clean:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+

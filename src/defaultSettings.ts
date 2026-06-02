@@ -12,7 +12,7 @@ const defaultSettings = {
   profanityFilterEnabled: true,
   profanityWords: 'ควย, เย็ด, สัส, เหี้ย, หี, แตด, ล่อ, ดอกทอง, ส้นตีน, อีดอก, อีเหี้ย, พ่อง, แม่มึง, กู, มึง',
   profanityReplaceStyle: 'asterisks', // asterisks, polite, block
-  messageTemplate: '{donor} ได้ส่งกำลังใจ {amount} บาท! 🎉',
+  messageTemplate: '{donor} ได้ส่งหัวใจ {amount} ดวง! 🎉',
   showDonorMessage: true,
   minAmount: 1, // Minimum amount to trigger alert
   theme: 'glassmorphism', // glassmorphism, cyberpunk, minimal, custom

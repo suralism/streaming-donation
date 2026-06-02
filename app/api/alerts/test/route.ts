@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import sseRegistry from '@/src/sseRegistry';
-import db from '@/src/database';
+
+// In-memory store for test alerts (polling fallback only, NOT saved to DB)
+// Kept for max 60 seconds so overlay poll can pick them up
+const testAlertStore: any[] = [];
 
 export async function POST(request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { donor, amount, message } = body;
+    const { donor, amount, message, creatorId } = body;
 
     const testTxId = `test-alert-${Date.now()}`;
 
@@ -16,21 +19,26 @@ export async function POST(request) {
       amount: amount || 100,
       message: message || 'นี่คือ test alert 🎉',
       status: 'successful',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      creatorId: creatorId || 'system',
+      isTest: true
     };
 
-    console.log(`📢 Emitting test alert for: ${alertData.donor}, Amount: ${alertData.amount}`);
+    console.log(`📢 Emitting test alert for: ${alertData.donor}, Amount: ${alertData.amount}, Creator: ${alertData.creatorId}`);
     sseRegistry.emit('alert', alertData);
 
-    // บันทึกลง Database เป็น ID พิเศษเพื่อให้ระบบ Polling สามารถดึงไปแสดงผลบน OBS ได้ร้อยเปอร์เซ็นต์ในทุก Process
-    await db.saveTransaction({
-      id: testTxId,
-      amount: alertData.amount,
-      donor: alertData.donor,
-      message: alertData.message,
-      status: 'successful',
-      paidAt: alertData.timestamp
+    // Store in memory (NOT database) for polling fallback
+    testAlertStore.push({
+      ...alertData,
+      paidAt: alertData.timestamp,
+      creator_id: alertData.creatorId
     });
+
+    // Auto-cleanup: remove test alerts older than 60s
+    const now = Date.now();
+    while (testAlertStore.length > 0 && now - new Date(testAlertStore[0].paidAt).getTime() > 60000) {
+      testAlertStore.shift();
+    }
 
     return NextResponse.json({
       success: true,
@@ -43,4 +51,10 @@ export async function POST(request) {
       details: error.message
     }, { status: 500 });
   }
+}
+
+// Export test alert store for polling route to access
+export function getTestAlerts() {
+  const now = Date.now();
+  return testAlertStore.filter((a) => now - new Date(a.paidAt).getTime() < 60000);
 }

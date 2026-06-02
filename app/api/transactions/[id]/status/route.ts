@@ -27,6 +27,12 @@ export async function POST(request, { params }) {
 
     // If status is updated to successful, trigger live test/manual alert
     if (status === 'successful') {
+      // Credit creator's wallet balance if creator_id is attached to the transaction
+      if (updatedTx.creator_id) {
+        console.log(`💰 Crediting ${updatedTx.amount} coins via Force Pay to creator ID: ${updatedTx.creator_id}`);
+        await db.updateUserBalance(updatedTx.creator_id, updatedTx.amount);
+      }
+
       const alertPayload = {
         type: 'donation',
         id: updatedTx.id || id,
@@ -35,7 +41,8 @@ export async function POST(request, { params }) {
         message: updatedTx.message || '',
         status: 'successful',
         timestamp: new Date().toISOString(),
-        isManualTrigger: true
+        isManualTrigger: true,
+        creatorId: updatedTx.creator_id || null
       };
 
       console.log(`📢 Emitting manual status success alert for: ${alertPayload.donor}, Amount: ${alertPayload.amount}`);

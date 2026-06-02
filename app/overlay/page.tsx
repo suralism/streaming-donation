@@ -364,7 +364,7 @@ export default function OverlayPage() {
     if (settingsRef.current.ttsEnabled) {
       const filteredDonor = filterProfanity(currentAlert.donor || 'Anonymous', settingsRef.current);
       const filteredMessage = filterProfanity(currentAlert.message || '', settingsRef.current);
-      const speakText = `${filteredDonor} ส่งกำลังใจ ${currentAlert.amount} บาท. ${currentAlert.message ? `ฝากข้อความว่า ${filteredMessage}` : ''}`;
+      const speakText = `${filteredDonor} ส่งหัวใจ ${currentAlert.amount} ดวง. ${currentAlert.message ? `ฝากข้อความว่า ${filteredMessage}` : ''}`;
       
       ttsTimer = setTimeout(() => {
         speakMessage(speakText, settingsRef.current.ttsLanguage, settingsRef.current.ttsVolume, settingsRef.current.ttsRate, settingsRef.current.ttsVoice);
@@ -395,7 +395,6 @@ export default function OverlayPage() {
       clearTimeout(exitTimer);
     };
   }, [currentAlert]);
-
   // Load initial settings and subscribe to SSE Stream
   useEffect(() => {
     // Warm speech voices on load
@@ -406,10 +405,19 @@ export default function OverlayPage() {
       }
     }
 
+    // Parse query parameters to support creator-specific overlays
+    let creatorId = '';
+    let usernameParam = '';
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      creatorId = urlParams.get('userId') || '';
+      usernameParam = urlParams.get('username') || '';
+    }
+
     // Fetch initial settings
     const loadSettings = async () => {
       try {
-        const res = await fetch('/api/overlay/settings');
+        const res = await fetch(`/api/overlay/settings?userId=${creatorId}`);
         if (res.ok) {
           const initialSettings = await res.json();
           setSettings(initialSettings);
@@ -419,12 +427,17 @@ export default function OverlayPage() {
       }
     };
 
+    // Shared set of seen transaction IDs to prevent duplicate alerts between SSE and Polling
+    const seenTxIds = new Set<string>();
+
     const loadTransactions = async () => {
       try {
-        const res = await fetch('/api/transactions');
+        const res = await fetch(`/api/transactions?userId=${creatorId}`);
         if (res.ok) {
           const data = await res.json();
           const successful = data.filter((t: any) => t.status === 'successful');
+          // Add existing transactions to seen list to prevent them from showing alert on initial load
+          successful.forEach((t: any) => seenTxIds.add(t.id));
           setTransactions(successful);
         }
       } catch (e) {
@@ -439,7 +452,7 @@ export default function OverlayPage() {
     let eventSource;
     let reconnectAttempts = 0;
     const connect = () => {
-      eventSource = new EventSource(`/api/alerts/stream`);
+      eventSource = new EventSource(`/api/alerts/stream?userId=${creatorId}&username=${usernameParam}`);
 
       eventSource.onopen = () => {
         console.log('✅ SSE Connected in OBS Overlay');
@@ -456,12 +469,16 @@ export default function OverlayPage() {
           }
 
           if (data.type === 'settings_update') {
+            if (data.userId && data.userId !== (creatorId || 'system')) return;
             console.log('🔄 Live Settings update received:', data.settings);
             setSettings(data.settings);
             return;
           }
 
           if (data.type === 'donation') {
+            if (seenTxIds.has(data.id)) return; // Avoid duplicate
+            seenTxIds.add(data.id);
+
             const amount = Number(data.amount) || 0;
             // Access current value from settingsRef to avoid closure problems
             const minAmount = settingsRef.current.minAmount;
@@ -497,8 +514,55 @@ export default function OverlayPage() {
 
     connect();
 
+    // Fallback polling for browsers/WebViews that don't support persistent SSE (like PRISM Mobile WebView)
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/alerts/poll?userId=${creatorId}&username=${usernameParam}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && data.alerts) {
+          // Sort chronologically (oldest first) so they pop up in order
+          const sortedAlerts = [...data.alerts].sort(
+            (a, b) => new Date(a.paidAt || a.timestamp).getTime() - new Date(b.paidAt || b.timestamp).getTime()
+          );
+
+          for (const tx of sortedAlerts) {
+            if (!seenTxIds.has(tx.id)) {
+              seenTxIds.add(tx.id);
+
+              const alertPayload = {
+                type: 'donation',
+                id: tx.id,
+                donor: tx.donor || 'Anonymous',
+                amount: Number(tx.amount) || 0,
+                message: tx.message || '',
+                status: 'successful',
+                timestamp: tx.paidAt || tx.timestamp
+              };
+
+              const amount = Number(alertPayload.amount) || 0;
+              const minAmount = settingsRef.current.minAmount;
+              if (amount >= minAmount) {
+                console.log('💝 [Poll Fallback] Queueing new donation alert:', alertPayload);
+                queueRef.current.push(alertPayload);
+                processQueue();
+                
+                setTransactions(prev => {
+                  if (prev.some(t => t.id === alertPayload.id)) return prev;
+                  return [alertPayload, ...prev];
+                });
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Fallback polling error:', e);
+      }
+    }, 4000);
+
     return () => {
       if (eventSource) eventSource.close();
+      clearInterval(pollInterval);
     };
   }, []);
 
@@ -512,7 +576,7 @@ export default function OverlayPage() {
 
   if (currentAlert) {
     amountFormatted = Number(currentAlert.amount).toLocaleString('th-TH', { minimumFractionDigits: 0 });
-    const messageTemplate = settings.messageTemplate || '{donor} ได้ส่งกำลังใจ {amount} บาท! 🎉';
+    const messageTemplate = settings.messageTemplate || '{donor} ได้ส่งหัวใจ {amount} ดวง! 🎉';
     
     const headerText = messageTemplate
       .replace(/{donor}/g, currentAlert.donor || 'Anonymous')
@@ -523,8 +587,8 @@ export default function OverlayPage() {
 
     // Check if we should hide the small alert label
     const tempLower = messageTemplate.toLowerCase();
-    shouldHideLabel = tempLower.includes('{amount}') || tempLower.includes('บริจาค') || tempLower.includes('ส่งกำลังใจ') || tempLower.includes('donate');
-    labelText = (settings.theme === 'cyberpunk' || settings.theme === 'minimal') ? 'PAY' : 'ส่งกำลังใจ';
+    shouldHideLabel = tempLower.includes('{amount}') || tempLower.includes('หัวใจ') || tempLower.includes('ส่งกำลังใจ') || tempLower.includes('donate');
+    labelText = (settings.theme === 'cyberpunk' || settings.theme === 'minimal') ? 'GIFT' : 'ส่งหัวใจ';
 
     alertBoxClasses = [
       'alert-box',
@@ -582,7 +646,7 @@ export default function OverlayPage() {
                     <span className="donor-name">{filteredHeader}</span>
                     {!shouldHideLabel && <span className="alert-label">{labelText}</span>}
                   </div>
-                  <div className="alert-amount">฿{amountFormatted}</div>
+                  <div className="alert-amount">{amountFormatted} <span className="heart-icon heart-md" style={{ marginLeft: '6px' }} /></div>
                   {settings.showDonorMessage && currentAlert.message && (
                     <div className="alert-message">{filteredMessage}</div>
                   )}
@@ -650,7 +714,7 @@ export default function OverlayPage() {
           <div style={widgetStyle} className={`widget-goal theme-${settings.theme}`}>
             <div className="goal-title-row">
               <span className="goal-title">{w.settings?.title || 'เป้าหมายสตรีม 🎯'}</span>
-              <span className="goal-progress-text">฿{current.toLocaleString()} / ฿{target.toLocaleString()} ({percent.toFixed(0)}%)</span>
+              <span className="goal-progress-text">{current.toLocaleString()} ดวง / {target.toLocaleString()} ดวง ({percent.toFixed(0)}%)</span>
             </div>
             <div className="goal-bar-outer">
               <div 
@@ -705,7 +769,7 @@ export default function OverlayPage() {
                       return (
                         <div key={tx.id || idx} className="recent-marquee-item">
                           <span>👤 {tx.donor || 'Anonymous'}</span>
-                          {showAmount && <span className="recent-bar-amount">฿{amountFormatted}</span>}
+                          {showAmount && <span className="recent-bar-amount">{amountFormatted} ดวง</span>}
                           {idx < list.length - 1 && <span style={{ opacity: 0.3, margin: '0 5px' }}>|</span>}
                         </div>
                       );
@@ -724,7 +788,7 @@ export default function OverlayPage() {
                     return (
                       <div key={tx.id || idx} className="recent-up-item anim-up">
                         <span>👤 {tx.donor || 'Anonymous'}</span>
-                        {showAmount && <span className="recent-bar-amount">฿{amountFormatted}</span>}
+                        {showAmount && <span className="recent-bar-amount">{amountFormatted} ดวง</span>}
                       </div>
                     );
                   })}
@@ -748,7 +812,7 @@ export default function OverlayPage() {
                 return (
                   <div key={tx.id || idx} className="recent-item">
                     <span className="recent-donor-name">{tx.donor || 'Anonymous'}</span>
-                    {showAmount && <span className="recent-donor-amount">฿{amountFormatted}</span>}
+                    {showAmount && <span className="recent-donor-amount">{amountFormatted} ดวง</span>}
                   </div>
                 );
               })}

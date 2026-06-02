@@ -46,9 +46,15 @@ export async function initDB() {
           raw_webhook TEXT,
           createdAt TEXT,
           updatedAt TEXT,
-          paidAt TEXT
+          paidAt TEXT,
+          creator_id TEXT
         )
       `);
+
+      // Try adding creator_id column to existing transactions table
+      try {
+        await db.execute("ALTER TABLE transactions ADD COLUMN creator_id TEXT");
+      } catch (e) {}
 
       // 2. Create settings table
       await db.execute(`
@@ -58,7 +64,41 @@ export async function initDB() {
         )
       `);
 
-      console.log('✅ Turso Database tables verified.');
+      // 3. Create users table
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY,
+          username TEXT UNIQUE NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT,
+          display_name TEXT,
+          coin_balance REAL DEFAULT 0,
+          kyc_status TEXT DEFAULT 'unsubmitted',
+          kyc_document_url TEXT,
+          kyc_rejection_reason TEXT,
+          bank_name TEXT,
+          bank_account_number TEXT,
+          bank_account_holder TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // 4. Create withdrawals table
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS withdrawals (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL,
+          coin_amount REAL NOT NULL,
+          payout_amount REAL NOT NULL,
+          status TEXT DEFAULT 'pending',
+          admin_notes TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          processed_at TEXT,
+          FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+      `);
+
+      console.log('✅ Turso Database tables verified for SaaS.');
 
       // 3. Auto Migration of Legacy JSON files (If Turso is empty and local files/backups exist)
       const DB_DIR = path.join(process.cwd(), 'data');
@@ -340,8 +380,8 @@ export async function saveTransaction(data: any) {
     const createdAt = data.createdAt || now;
     
     await db.execute({
-      sql: `INSERT INTO transactions (id, amount, donor, message, status, paymentUrl, raw_response, raw_webhook, createdAt, updatedAt, paidAt)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO transactions (id, amount, donor, message, status, paymentUrl, raw_response, raw_webhook, createdAt, updatedAt, paidAt, creator_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         data.id,
         data.amount || 0,
@@ -353,7 +393,8 @@ export async function saveTransaction(data: any) {
         rawWebhook,
         createdAt,
         now,
-        data.paidAt || null
+        data.paidAt || null,
+        data.creator_id || null
       ]
     });
     
@@ -368,7 +409,8 @@ export async function saveTransaction(data: any) {
       raw_webhook: data.raw_webhook || null,
       createdAt,
       updatedAt: now,
-      paidAt: data.paidAt || null
+      paidAt: data.paidAt || null,
+      creator_id: data.creator_id || null
     };
   }
 }
@@ -376,22 +418,35 @@ export async function saveTransaction(data: any) {
 /**
  * Fetch overlay settings from database or return default.
  */
-export async function getSettings(defaultSettings: any) {
+export async function getSettings(defaultSettings: any, userId?: string) {
   await ensureConnected();
   if (isFallback) {
-    return memorySettings ? { ...defaultSettings, ...memorySettings } : defaultSettings;
+    const s = memorySettings ? { ...defaultSettings, ...memorySettings } : defaultSettings;
+    if (s && typeof s.messageTemplate === 'string') {
+      s.messageTemplate = s.messageTemplate
+        .replace(/บาท/g, 'ดวง')
+        .replace(/ส่งกำลังใจ/g, 'ส่งหัวใจ');
+    }
+    return s;
   }
   if (!db) return defaultSettings;
+  const key = userId ? `settings_${userId}` : 'overlay_settings';
   const result = await db.execute({
     sql: 'SELECT value FROM settings WHERE key = ?',
-    args: ['overlay_settings']
+    args: [key]
   });
   const row = result.rows[0];
   if (!row) {
     return defaultSettings;
   }
   try {
-    return { ...defaultSettings, ...JSON.parse(row.value as string) };
+    const parsed = JSON.parse(row.value as string);
+    if (parsed && typeof parsed.messageTemplate === 'string') {
+      parsed.messageTemplate = parsed.messageTemplate
+        .replace(/บาท/g, 'ดวง')
+        .replace(/ส่งกำลังใจ/g, 'ส่งหัวใจ');
+    }
+    return { ...defaultSettings, ...parsed };
   } catch (e) {
     return defaultSettings;
   }
@@ -400,7 +455,7 @@ export async function getSettings(defaultSettings: any) {
 /**
  * Save overlay settings.
  */
-export async function saveSettings(settings: any) {
+export async function saveSettings(settings: any, userId?: string) {
   await ensureConnected();
   if (isFallback) {
     memorySettings = settings;
@@ -413,25 +468,157 @@ export async function saveSettings(settings: any) {
 
   if (!db) throw new Error('Database not initialized');
   const valueStr = JSON.stringify(settings);
+  const key = userId ? `settings_${userId}` : 'overlay_settings';
   const checkResult = await db.execute({
     sql: 'SELECT 1 FROM settings WHERE key = ?',
-    args: ['overlay_settings']
+    args: [key]
   });
   const existing = checkResult.rows[0];
   
   if (existing) {
     await db.execute({
       sql: 'UPDATE settings SET value = ? WHERE key = ?',
-      args: [valueStr, 'overlay_settings']
+      args: [valueStr, key]
     });
   } else {
     await db.execute({
       sql: 'INSERT INTO settings (key, value) VALUES (?, ?)',
-      args: ['overlay_settings', valueStr]
+      args: [key, valueStr]
     });
   }
   
   return settings;
+}
+
+/**
+ * SaaS User functions
+ */
+export async function getUserByUsername(username: string) {
+  await ensureConnected();
+  if (isFallback) return null; // SaaS features require DB
+  if (!db) return null;
+  const result = await db.execute({
+    sql: 'SELECT * FROM users WHERE username = ?',
+    args: [username.toLowerCase()]
+  });
+  const row: any = result.rows[0];
+  return row || null;
+}
+
+export async function getUserById(id: string) {
+  await ensureConnected();
+  if (isFallback) return null;
+  if (!db) return null;
+  const result = await db.execute({
+    sql: 'SELECT * FROM users WHERE id = ?',
+    args: [id]
+  });
+  const row: any = result.rows[0];
+  return row || null;
+}
+
+export async function createUser(user: any) {
+  await ensureConnected();
+  if (isFallback) return null;
+  if (!db) throw new Error('Database not initialized');
+  
+  await db.execute({
+    sql: `INSERT INTO users (id, username, email, password_hash, display_name) 
+          VALUES (?, ?, ?, ?, ?)`,
+    args: [
+      user.id,
+      user.username.toLowerCase(),
+      user.email,
+      user.passwordHash || null,
+      user.displayName || user.username
+    ]
+  });
+  return user;
+}
+
+export async function updateUserBalance(userId: string, amountChange: number) {
+  await ensureConnected();
+  if (isFallback) return;
+  if (!db) throw new Error('Database not initialized');
+  await db.execute({
+    sql: 'UPDATE users SET coin_balance = coin_balance + ? WHERE id = ?',
+    args: [amountChange, userId]
+  });
+}
+
+export async function updateUserKyc(userId: string, data: any) {
+  await ensureConnected();
+  if (isFallback) return;
+  if (!db) throw new Error('Database not initialized');
+  await db.execute({
+    sql: `UPDATE users 
+          SET kyc_status = ?, kyc_document_url = ?, kyc_rejection_reason = ?, 
+              bank_name = ?, bank_account_number = ?, bank_account_holder = ? 
+          WHERE id = ?`,
+    args: [
+      data.kycStatus || 'pending',
+      data.kycDocumentUrl || null,
+      data.kycRejectionReason || null,
+      data.bankName || null,
+      data.bankAccountNumber || null,
+      data.bankAccountHolder || null,
+      userId
+    ]
+  });
+}
+
+/**
+ * SaaS Withdrawal functions
+ */
+export async function createWithdrawal(w: any) {
+  await ensureConnected();
+  if (isFallback) return null;
+  if (!db) throw new Error('Database not initialized');
+  const now = new Date().toISOString();
+  
+  await db.execute({
+    sql: `INSERT INTO withdrawals (id, user_id, coin_amount, payout_amount, status, created_at) 
+          VALUES (?, ?, ?, ?, 'pending', ?)`,
+    args: [w.id, w.userId, w.coinAmount, w.payoutAmount, now]
+  });
+  return w;
+}
+
+export async function getWithdrawals(userId?: string) {
+  await ensureConnected();
+  if (isFallback) return [];
+  if (!db) return [];
+  
+  if (userId) {
+    const result = await db.execute({
+      sql: 'SELECT * FROM withdrawals WHERE user_id = ? ORDER BY created_at DESC',
+      args: [userId]
+    });
+    return result.rows;
+  } else {
+    const result = await db.execute('SELECT w.*, u.username, u.display_name FROM withdrawals w JOIN users u ON w.user_id = u.id ORDER BY w.created_at DESC');
+    return result.rows;
+  }
+}
+
+export async function updateWithdrawalStatus(id: string, status: string, adminNotes?: string) {
+  await ensureConnected();
+  if (isFallback) return;
+  if (!db) throw new Error('Database not initialized');
+  const now = new Date().toISOString();
+  
+  await db.execute({
+    sql: 'UPDATE withdrawals SET status = ?, admin_notes = ?, processed_at = ? WHERE id = ?',
+    args: [status, adminNotes || null, now, id]
+  });
+}
+
+export async function getUsers() {
+  await ensureConnected();
+  if (isFallback) return [];
+  if (!db) return [];
+  const result = await db.execute("SELECT * FROM users ORDER BY username ASC");
+  return result.rows;
 }
 
 const dbExport = {
@@ -440,7 +627,16 @@ const dbExport = {
   getTransactionById,
   saveTransaction,
   getSettings,
-  saveSettings
+  saveSettings,
+  getUserByUsername,
+  getUserById,
+  createUser,
+  updateUserBalance,
+  updateUserKyc,
+  createWithdrawal,
+  getWithdrawals,
+  updateWithdrawalStatus,
+  getUsers
 };
 
 export default dbExport;

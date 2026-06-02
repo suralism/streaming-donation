@@ -1,4 +1,5 @@
 import './globals.css';
+import SessionProviderWrapper from './components/SessionProviderWrapper';
 
 export const metadata = {
   title: '💝 สนับสนุนและส่งกำลังใจ (Stream Donation)',
@@ -12,7 +13,9 @@ export default function RootLayout({ children }) {
         <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body>
-        {children}
+        <SessionProviderWrapper>
+          {children}
+        </SessionProviderWrapper>
       </body>
     </html>
   );

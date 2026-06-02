@@ -8,10 +8,19 @@ const { createPaymentLink } = beam;
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { amount, name, message } = body;
+    const { amount, name, message, creatorUsername } = body;
 
     if (!amount || amount < 1) {
       return NextResponse.json({ error: 'จำนวนเงินไม่ถูกต้อง' }, { status: 400 });
+    }
+
+    let creatorId = 'system';
+    if (creatorUsername) {
+      const creator = await db.getUserByUsername(creatorUsername);
+      if (!creator) {
+        return NextResponse.json({ error: 'ไม่พบชื่อผู้รับสตรีมเมอร์นี้ในระบบ' }, { status: 404 });
+      }
+      creatorId = creator.id;
     }
 
     // Determine redirect URL based on request headers
@@ -23,8 +32,8 @@ export async function POST(request) {
     const charge = await createPaymentLink({
       amount: Math.round(amount * 100), // convert to satang
       currency: 'THB',
-      description: message || `Donation from ${name || 'Anonymous'}`,
-      referenceId: `donate-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      description: message || `Hearts support for ${creatorUsername || 'creator'} from ${name || 'Anonymous'}`,
+      referenceId: `hearts-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       redirectUrl: redirectUrl
     });
 
@@ -36,7 +45,8 @@ export async function POST(request) {
       message: message || '',
       status: 'pending',
       paymentUrl: charge.url,
-      raw_response: charge
+      raw_response: charge,
+      creator_id: creatorId
     });
 
     return NextResponse.json({
@@ -58,7 +68,7 @@ export async function POST(request) {
     }
 
     return NextResponse.json({
-      error: 'ไม่สามารถสร้างรายการบริจาคได้',
+      error: 'ไม่สามารถสร้างรายการส่งหัวใจได้',
       details: details || errorMessage
     }, { status: 500 });
   }

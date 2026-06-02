@@ -64,8 +64,17 @@ export async function POST(request) {
         raw_webhook: event
       });
 
-      // 3. Broadcast Alert via sseRegistry
+      // Fetch latest transaction details to get creator_id
       const txDetails = (await getTransactionById(targetId)) || {};
+      
+      // 3. Credit Creator Wallet Balance if creator_id exists (1 Coin = 1 Baht)
+      if (txDetails.creator_id) {
+        const donationAmount = amount || txDetails.amount || 0;
+        console.log(`💰 Crediting ${donationAmount} coins to creator ID: ${txDetails.creator_id}`);
+        await db.updateUserBalance(txDetails.creator_id, donationAmount);
+      }
+
+      // 4. Broadcast Alert via sseRegistry
       const alertPayload = {
         type: 'donation',
         id: targetId,
@@ -73,7 +82,8 @@ export async function POST(request) {
         amount: amount || txDetails.amount || 0,
         message: txDetails.message || charge.description || '',
         status: 'successful',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        creatorId: txDetails.creator_id || null
       };
       
       console.log(`📢 Emitting webhook alert for: ${alertPayload.donor}, Amount: ${alertPayload.amount}`);
