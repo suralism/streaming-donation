@@ -9,6 +9,11 @@ export default function DonationPage() {
   const [donorMessage, setDonorMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
+  const [modalConfig, setModalConfig] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+  }>({ show: false, title: '', message: '' });
 
   const presets = [
     { amount: 50, emoji: '☕', label: '฿50', desc: 'ค่าน้ำเก๊กฮวย' },
@@ -67,7 +72,7 @@ export default function DonationPage() {
         throw new Error('ไม่ได้รับลิงก์ชำระเงินจากเซิร์ฟเวอร์');
       }
     } catch (err) {
-      alert(err.message);
+      setModalConfig({ show: true, title: 'เกิดข้อผิดพลาด', message: err.message });
       setLoading(false);
     }
   };
@@ -154,6 +159,33 @@ export default function DonationPage() {
           </form>
         </div>
       </div>
+
+      {/* Reusable premium modal alert */}
+      {modalConfig.show && (
+        <div className="modal active">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>❌ {modalConfig.title}</h3>
+              <button className="btn-close" onClick={() => setModalConfig({ ...modalConfig, show: false })}>
+                &times;
+              </button>
+            </div>
+            <div className="modal-body">
+              {modalConfig.message}
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ padding: '12px 24px', fontSize: '14px', width: 'auto' }}
+                onClick={() => setModalConfig({ ...modalConfig, show: false })}
+              >
+                ตกลง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

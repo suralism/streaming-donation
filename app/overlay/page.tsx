@@ -44,8 +44,9 @@ export default function OverlayPage() {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       
-      const standardWidth = 1920;
-      const standardHeight = 1080;
+      const isPortrait = settings.orientation === 'portrait';
+      const standardWidth = isPortrait ? 1080 : 1920;
+      const standardHeight = isPortrait ? 1920 : 1080;
       
       const scaleX = viewportWidth / standardWidth;
       const scaleY = viewportHeight / standardHeight;
@@ -58,7 +59,7 @@ export default function OverlayPage() {
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [settings.orientation]);
 
   // Apply CSS Custom variables
   const applyStyleProperties = (s) => {
@@ -535,13 +536,15 @@ export default function OverlayPage() {
 
   const activeWidgets = (settings as any).widgets || [];
 
+  const isPortrait = settings.orientation === 'portrait';
+
   return (
     <div className="overlay-container" style={{
       position: 'absolute' as 'absolute',
       left: '50%',
       top: '50%',
-      width: '1920px',
-      height: '1080px',
+      width: isPortrait ? '1080px' : '1920px',
+      height: isPortrait ? '1920px' : '1080px',
       transform: `translate(-50%, -50%) scale(${scale})`,
       transformOrigin: 'center center',
       overflow: 'hidden',

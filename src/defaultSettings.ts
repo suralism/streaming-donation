@@ -1,4 +1,5 @@
 const defaultSettings = {
+  orientation: 'landscape', // landscape, portrait
   duration: 8, // seconds
   soundEnabled: true,
   soundChoice: 'chime', // chime, retro, modern, bell, none

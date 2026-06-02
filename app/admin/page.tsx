@@ -24,6 +24,7 @@ export default function AdminPage() {
   const itemsPerPage = 10;
   
   // Settings Form State
+  const [orientation, setOrientation] = useState('landscape');
   const [theme, setTheme] = useState('glassmorphism');
   const [fontFamily, setFontFamily] = useState('Noto Sans Thai');
   const [animation, setAnimation] = useState('slide-down');
@@ -54,6 +55,13 @@ export default function AdminPage() {
   const [profanityWords, setProfanityWords] = useState('');
 
   const iframeRef = useRef(null);
+  const [modalConfig, setModalConfig] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    type: 'alert' | 'confirm';
+    onConfirm?: () => void;
+  }>({ show: false, title: '', message: '', type: 'alert' });
 
   // Load voices for TTS
   useEffect(() => {
@@ -132,6 +140,7 @@ export default function AdminPage() {
       const res = await fetch('/api/overlay/settings');
       if (res.ok) {
         const s = await res.json();
+        setOrientation(s.orientation || 'landscape');
         setTheme(s.theme);
         setFontFamily(s.fontFamily);
         setAnimation(s.animation);
@@ -190,21 +199,25 @@ export default function AdminPage() {
     setInspectTx(null);
   };
 
-  const handleForcePay = async (id) => {
-    if (!confirm('ต้องการบังคับให้สถานะรายการนี้เป็น "ชำระเงินสำเร็จ" หรือไม่? การกระทำนี้จะยิง Alert ขึ้นหน้าจอด้วย')) return;
-
-    try {
-      const res = await fetch(`/api/transactions/${id}/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'successful' })
-      });
-      if (res.ok) {
-        fetchData();
+  const handleForcePay = (id) => {
+    triggerConfirm(
+      'ยืนยันรายการชำระเงิน',
+      'ต้องการบังคับให้สถานะรายการนี้เป็น "ชำระเงินสำเร็จ" หรือไม่? การกระทำนี้จะยิง Alert ขึ้นหน้าจอด้วย',
+      async () => {
+        try {
+          const res = await fetch(`/api/transactions/${id}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'successful' })
+          });
+          if (res.ok) {
+            fetchData();
+          }
+        } catch (err) {
+          console.error('Status update failed:', err);
+        }
       }
-    } catch (err) {
-      console.error('Status update failed:', err);
-    }
+    );
   };
 
   const handleSimulateAlert = async (tx) => {
@@ -241,6 +254,14 @@ export default function AdminPage() {
     } catch (e) {
       console.error('Failed to trigger test alert:', e);
     }
+  };
+
+  const triggerAlert = (title: string, message: string) => {
+    setModalConfig({ show: true, title, message, type: 'alert' });
+  };
+
+  const triggerConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setModalConfig({ show: true, title, message, type: 'confirm', onConfirm });
   };
 
   const reloadPreviewFrame = () => {
@@ -303,11 +324,13 @@ export default function AdminPage() {
     const scaledW = w.width * 0.4;
     const scaledH = w.height * 0.4;
 
-    // Bounds checking inside 768x432 grid
+    // Bounds checking inside canvas grid (768x432 for landscape, 432x768 for portrait)
+    const maxX = orientation === 'portrait' ? 432 : 768;
+    const maxY = orientation === 'portrait' ? 768 : 432;
     if (newScaledX < 0) newScaledX = 0;
     if (newScaledY < 0) newScaledY = 0;
-    if (newScaledX + scaledW > 768) newScaledX = 768 - scaledW;
-    if (newScaledY + scaledH > 432) newScaledY = 432 - scaledH;
+    if (newScaledX + scaledW > maxX) newScaledX = maxX - scaledW;
+    if (newScaledY + scaledH > maxY) newScaledY = maxY - scaledH;
 
     // Convert back to 1920x1080 base
     const newX = Math.round(newScaledX / 0.4);
@@ -347,6 +370,7 @@ export default function AdminPage() {
     if (e) e.preventDefault();
 
     const payload = {
+      orientation,
       theme,
       fontFamily,
       animation,
@@ -387,10 +411,10 @@ export default function AdminPage() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        alert('💾 บันทึกและซิงค์การตั้งค่าสำเร็จ! หน้าจอจำลองสดจะปรับดีไซน์ใหม่ทันที 🎉');
+        triggerAlert('บันทึกสำเร็จ', '💾 บันทึกและซิงค์การตั้งค่าสำเร็จ! หน้าจอจำลองสดจะปรับดีไซน์ใหม่ทันที 🎉');
       }
     } catch (err) {
-      alert('❌ ไม่สามารถบันทึกการตั้งค่าได้');
+      triggerAlert('ข้อผิดพลาด', '❌ ไม่สามารถบันทึกการตั้งค่าได้');
     }
   };
 
@@ -790,6 +814,21 @@ export default function AdminPage() {
                       </div>
                       
                       <div className="form-row">
+                        <div className="form-group full-width">
+                          <label htmlFor="orientationSelect">ทิศทางการแสดงผลหน้าจอ (Screen Orientation)</label>
+                          <select
+                            id="orientationSelect"
+                            className="form-select"
+                            value={orientation}
+                            onChange={(e) => setOrientation(e.target.value)}
+                          >
+                            <option value="landscape">แนวนอน (Landscape - 1920x1080) สำหรับ PC / OBS แนวนอน</option>
+                            <option value="portrait">แนวตั้ง (Portrait - 1080x1920) สำหรับมือถือ / TikTok / Shorts</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="form-row">
                         <div className="form-group">
                           <label htmlFor="themeSelect">ธีมการแสดงผล</label>
                           <select
@@ -1183,7 +1222,7 @@ export default function AdminPage() {
                       <span className="badge badge-success">SSE Connected</span>
                     </div>
                     <p className="preview-hint">เมื่อกด "ยิงทดสอบ Alert" ด้านซ้าย หรือกดบันทึกค่า จะแสดงการปรับแต่งสดใน Iframe นี้ทันที!</p>
-                    <div className="preview-iframe-wrapper">
+                    <div className="preview-iframe-wrapper" style={{ aspectRatio: orientation === 'portrait' ? '9 / 16' : '16 / 9', maxWidth: orientation === 'portrait' ? '300px' : 'none', margin: '0 auto' }}>
                       <iframe
                         ref={iframeRef}
                         src="/overlay"
@@ -1216,9 +1255,9 @@ export default function AdminPage() {
                 {/* 1. The Interactive Board Grid */}
                 <div className="dashboard-card" style={{ padding: '20px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: 700 }}>🖥️ บอร์ดจำลองหน้าจอไลฟ์สตรีม (16:9 Scale Grid: 1920x1080)</h3>
+                    <h3 style={{ fontSize: '16px', fontWeight: 700 }}>🖥️ บอร์ดจำลองหน้าจอไลฟ์สตรีม ({orientation === 'portrait' ? '9:16 Scale Grid: 1080x1920' : '16:9 Scale Grid: 1920x1080'})</h3>
                     <span style={{ fontSize: '12px', background: '#1e293b', padding: '4px 10px', borderRadius: '20px', color: '#94a3b8' }}>
-                      ความละเอียดจริง: 1920 x 1080 px (จำลองสเกล 0.4x)
+                      ความละเอียดจริง: {orientation === 'portrait' ? '1080 x 1920' : '1920 x 1080'} px (จำลองสเกล 0.4x)
                     </span>
                   </div>
 
@@ -1233,8 +1272,8 @@ export default function AdminPage() {
                     onMouseLeave={handleCanvasMouseUp}
                     style={{ 
                       position: 'relative', 
-                      width: '768px', 
-                      height: '432px', 
+                      width: orientation === 'portrait' ? '432px' : '768px', 
+                      height: orientation === 'portrait' ? '768px' : '432px', 
                       background: '#090d16', 
                       backgroundImage: 'radial-gradient(rgba(99, 102, 241, 0.15) 1px, transparent 0)',
                       backgroundSize: '16px 16px',
@@ -1394,9 +1433,10 @@ export default function AdminPage() {
                                 className="form-control"
                                 value={selectedWidget.x}
                                 min="0"
-                                max="1920"
+                                max={orientation === 'portrait' ? 1080 : 1920}
                                 onChange={(e) => {
-                                  const val = Math.min(1920, Math.max(0, Number(e.target.value) || 0));
+                                  const maxVal = orientation === 'portrait' ? 1080 : 1920;
+                                  const val = Math.min(maxVal, Math.max(0, Number(e.target.value) || 0));
                                   setWidgets((prev: any) =>
                                     prev.map((item: any) => (item.id === selectedWidget.id ? { ...item, x: val } : item))
                                   );
@@ -1410,9 +1450,10 @@ export default function AdminPage() {
                                 className="form-control"
                                 value={selectedWidget.y}
                                 min="0"
-                                max="1080"
+                                max={orientation === 'portrait' ? 1920 : 1080}
                                 onChange={(e) => {
-                                  const val = Math.min(1080, Math.max(0, Number(e.target.value) || 0));
+                                  const maxVal = orientation === 'portrait' ? 1920 : 1080;
+                                  const val = Math.min(maxVal, Math.max(0, Number(e.target.value) || 0));
                                   setWidgets((prev: any) =>
                                     prev.map((item: any) => (item.id === selectedWidget.id ? { ...item, y: val } : item))
                                   );
@@ -1711,6 +1752,43 @@ export default function AdminPage() {
               <pre>
                 <code>{JSON.stringify(inspectTx, null, 2)}</code>
               </pre>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Premium Alert/Confirm Dialog */}
+      {modalConfig.show && (
+        <div className="modal active" style={{ zIndex: 99999 }}>
+          <div className="modal-content" style={{ maxWidth: '480px', border: '1px solid rgba(255, 255, 255, 0.15)', boxShadow: '0 20px 50px rgba(0,0,0,0.6)', background: 'rgba(15, 18, 36, 0.95)', backdropFilter: 'blur(20px)' }}>
+            <div className="modal-header" style={{ paddingBottom: '12px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {modalConfig.type === 'confirm' ? '❓ ยืนยันการดำเนินการ' : '📢 แจ้งเตือน'}
+              </h3>
+              <button className="btn-close" onClick={() => setModalConfig({ ...modalConfig, show: false })}>
+                &times;
+              </button>
+            </div>
+            <div className="modal-body" style={{ padding: '24px 0', fontSize: '15px', color: '#cbd5e1', lineHeight: '1.6' }}>
+              {modalConfig.message}
+            </div>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
+              {modalConfig.type === 'confirm' && (
+                <button
+                  className="admin-btn admin-btn-secondary"
+                  onClick={() => setModalConfig({ ...modalConfig, show: false })}
+                >
+                  ยกเลิก
+                </button>
+              )}
+              <button
+                className="admin-btn admin-btn-primary"
+                onClick={() => {
+                  setModalConfig({ ...modalConfig, show: false });
+                  if (modalConfig.onConfirm) modalConfig.onConfirm();
+                }}
+              >
+                {modalConfig.type === 'confirm' ? 'ตกลง' : 'รับทราบ'}
+              </button>
             </div>
           </div>
         </div>
