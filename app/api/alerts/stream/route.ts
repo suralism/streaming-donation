@@ -47,7 +47,7 @@ export async function GET(request) {
   const dbPollInterval = setInterval(async () => {
     try {
       // Poll successful transactions
-      const transactions = await db.getTransactions();
+      const transactions = await db.getTransactions(true);
       const newSuccessfulTx = transactions.filter(
         (tx) => tx.status === 'successful' && tx.paidAt && tx.paidAt > lastCheckedTime
       );

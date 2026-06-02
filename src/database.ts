@@ -208,15 +208,18 @@ function useInMemoryFallback(reason: string) {
 /**
  * Fetch all transactions ordered by creation date descending.
  */
-export async function getTransactions() {
+export async function getTransactions(includeTestAlerts = false) {
   await ensureConnected();
   if (isFallback) {
     return [...memoryTransactions]
-      .filter(t => !t.id.startsWith('test-alert-'))
+      .filter(t => includeTestAlerts || !t.id.startsWith('test-alert-'))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
   if (!db) return [];
-  const result = await db.execute("SELECT * FROM transactions WHERE id NOT LIKE 'test-alert-%' ORDER BY createdAt DESC");
+  const query = includeTestAlerts 
+    ? "SELECT * FROM transactions ORDER BY createdAt DESC"
+    : "SELECT * FROM transactions WHERE id NOT LIKE 'test-alert-%' ORDER BY createdAt DESC";
+  const result = await db.execute(query);
   return result.rows.map((row: any) => ({
     ...row,
     raw_response: row.raw_response ? JSON.parse(row.raw_response) : null,
